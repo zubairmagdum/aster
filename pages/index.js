@@ -345,8 +345,37 @@ export default function Aster(){
   useEffect(()=>{Store.set("aster_prefs",prefs);},[prefs]);
 
   const toast_=(msg,type="ok")=>setToast({msg,type});
+  const [inferring,setInferring]=useState(false);
+  const [inferDone,setInferDone]=useState(false);
 
-  const onResumeUploaded=(text,name)=>{setResumeText(text);setResumeFileName(name);Analytics.track("resume_upload",{name});toast_(`Resume loaded: ${name}`);};
+  const onResumeUploaded=async(text,name)=>{
+    setResumeText(text);setResumeFileName(name);Analytics.track("resume_upload",{name});toast_(`Resume loaded: ${name}`);
+    // Auto-infer preferences from resume
+    setInferring(true);setInferDone(false);
+    try{
+      const res=await fetch('/api/infer-prefs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({resumeText:text})});
+      const inferred=await res.json();
+      if(inferred&&!inferred.error){
+        setPrefs(current=>{
+          const merged={
+            ...DEFAULT_PREFS,...current,
+            targetIndustries:current.targetIndustries?.length>0?current.targetIndustries:(inferred.inferredTargetIndustries||[]),
+            excludedIndustries:current.excludedIndustries?.length>0?current.excludedIndustries:(inferred.inferredExcludedIndustries||[]),
+            minSalary:current.minSalary!==DEFAULT_PREFS.minSalary?current.minSalary:(inferred.inferredMinSalary||DEFAULT_PREFS.minSalary),
+            hasPeopleManagement:current.hasPeopleManagement!==false?current.hasPeopleManagement:(inferred.hasPeopleManagement||false),
+            workMode:current.workMode!=="Any"?current.workMode:(inferred.workMode||"Any"),
+            inferredSeniority:inferred.seniorityLevel,
+            inferredSummary:inferred.summary,
+            prefsInferred:true,
+          };
+          Store.set("aster_prefs",merged);
+          return merged;
+        });
+        toast_("Preferences set from your resume — check Prefs to adjust");
+      }
+    }catch(e){console.log('Pref inference failed silently:',e);}
+    setInferring(false);setInferDone(true);
+  };
 
   const addJob=(job)=>{
     const j={...job,id:Date.now().toString(),dateAdded:new Date().toISOString().split("T")[0]};
@@ -372,7 +401,7 @@ export default function Aster(){
 
   const savePrefs=(p)=>{setPrefs(p);Store.set("aster_prefs",p);toast_("Preferences saved");setShowPrefs(false);};
 
-  if(screen==="onboard")return<Onboarding onComplete={finishOnboard} onResumeUploaded={onResumeUploaded} resumeFileName={resumeFileName} email={email} onEmail={captureEmail}/>;
+  if(screen==="onboard")return<Onboarding onComplete={finishOnboard} onResumeUploaded={onResumeUploaded} resumeFileName={resumeFileName} email={email} onEmail={captureEmail} inferring={inferring} inferDone={inferDone}/>;
   if(screen==="admin")return<AdminView onBack={()=>setScreen("app")}/>;
 
   return(
@@ -439,6 +468,7 @@ export default function Aster(){
 // ─── PREFERENCES MODAL ────────────────────────────────────────────────────────
 function PrefsModal({prefs,onSave,onClose}){
   const [p,setP]=useState({...DEFAULT_PREFS,...prefs});
+  const [showInferBanner,setShowInferBanner]=useState(!!prefs.prefsInferred);
   const INDUSTRIES=["Healthcare","AI/ML","Fintech","EdTech","SaaS","Consumer","Data/Analytics","Enterprise Software","Other"];
   const EXCLUDED=["Gaming","Cybersecurity","Defense","Networking","Payments","Hardware","Crypto"];
 
@@ -448,7 +478,16 @@ function PrefsModal({prefs,onSave,onClose}){
     <div style={{position:"fixed",inset:0,zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(28,28,28,0.4)"}}>
       <div style={{background:T.white,borderRadius:RADIUS.xl,padding:"32px",width:560,maxHeight:"85vh",overflowY:"auto",boxShadow:SHADOW.xl}}>
         <div style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontWeight:600,color:T.charcoal,marginBottom:4}}>Job Search Preferences</div>
-        <p style={{fontSize:13,color:T.gray,marginBottom:24}}>These power hard skip logic, comp warnings, and role filtering.</p>
+        <p style={{fontSize:13,color:T.gray,marginBottom:prefs.prefsInferred?12:24}}>These power hard skip logic, comp warnings, and role filtering.</p>
+        {showInferBanner&&(
+          <div style={{padding:"10px 14px",background:"rgba(139,168,136,0.1)",borderRadius:RADIUS.md,marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:12,color:T.sage}}>✦ These preferences were auto-detected from your resume. Adjust anything that looks off.</span>
+            <button onClick={()=>setShowInferBanner(false)} style={{background:"none",border:"none",cursor:"pointer",color:T.gray3,fontSize:14,padding:"0 4px"}}>✕</button>
+          </div>
+        )}
+        {prefs.inferredSummary&&(
+          <p style={{fontSize:12,color:T.gray2,fontStyle:"italic",marginBottom:16,lineHeight:1.6}}>We read you as: {prefs.inferredSummary}</p>
+        )}
 
         {/* Comp */}
         <SectionLabel>Minimum Salary Target</SectionLabel>
@@ -520,7 +559,7 @@ function PrefsModal({prefs,onSave,onClose}){
 }
 
 // ─── ONBOARDING ───────────────────────────────────────────────────────────────
-function Onboarding({onComplete,onResumeUploaded,resumeFileName,email,onEmail}){
+function Onboarding({onComplete,onResumeUploaded,resumeFileName,email,onEmail,inferring,inferDone}){
   const [step,setStep]=useState("welcome");
   const [uploading,setUploading]=useState(false);
   const [dragging,setDragging]=useState(false);
@@ -567,7 +606,7 @@ function Onboarding({onComplete,onResumeUploaded,resumeFileName,email,onEmail}){
             <div style={{fontFamily:"'Playfair Display',serif",fontSize:32,fontWeight:600,color:T.charcoal,marginBottom:8}}>Upload your resume</div>
             <p style={{fontSize:14,color:T.gray,marginBottom:28}}>We will use it to tailor every analysis and outreach message to your experience.</p>
             <div className={"upload-zone"+(dragging?" dragging":"")} onClick={()=>fileRef.current&&fileRef.current.click()} onDragOver={e=>{e.preventDefault();setDragging(true);}} onDragLeave={()=>setDragging(false)} onDrop={e=>{e.preventDefault();setDragging(false);handleFile(e.dataTransfer.files[0]);}}>
-              {uploading?(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10}}><Spinner/><span style={{fontSize:13,color:T.gray}}>Parsing resume...</span></div>):resumeFileName?(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}><span style={{fontSize:28}}>📄</span><span style={{fontSize:14,fontWeight:600,color:T.forest}}>{resumeFileName}</span><span style={{fontSize:12,color:T.sage}}>Resume loaded ✓</span></div>):(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}><span style={{fontSize:36}}>⬆</span><span style={{fontSize:14,fontWeight:500,color:T.charcoal}}>Drop your resume here</span><span style={{fontSize:12,color:T.gray2}}>PDF, DOC, or DOCX · Max 10MB</span></div>)}
+              {uploading?(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10}}><Spinner/><span style={{fontSize:13,color:T.gray}}>Parsing resume...</span></div>):resumeFileName?(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}><span style={{fontSize:28}}>📄</span><span style={{fontSize:14,fontWeight:600,color:T.forest}}>{resumeFileName}</span><span style={{fontSize:12,color:T.sage}}>Resume loaded ✓</span>{inferring&&<span className="pulse" style={{fontSize:11,color:T.sage,marginTop:2}}>✦ Reading your background...</span>}{inferDone&&!inferring&&<span className="fade-in" style={{fontSize:11,color:T.forest,marginTop:2}}>✦ Preferences configured</span>}</div>):(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}><span style={{fontSize:36}}>⬆</span><span style={{fontSize:14,fontWeight:500,color:T.charcoal}}>Drop your resume here</span><span style={{fontSize:12,color:T.gray2}}>PDF, DOC, or DOCX · Max 10MB</span></div>)}
             </div>
             <input ref={fileRef} type="file" accept=".pdf,.doc,.docx" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])}/>
             <div style={{marginTop:16,display:"flex",gap:10}}>
