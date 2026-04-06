@@ -49,6 +49,15 @@ function checkHardSkip(jdText, prefs) {
     defense: ["defense contractor","department of defense","dod","classified","security clearance","government contractor"],
     networking: ["network engineer","cisco","network infrastructure","routing and switching","firewall engineer"],
     payments: ["payments infrastructure","card processing","acquiring bank","payment rails","issuer processing"],
+    lms: ["lms","learning management system","docebo","canvas lms","moodle","blackboard","cornerstone ondemand","student information system","sis platform"],
+    legal: ["legal workflows","contract lifecycle","clm platform","legal tech","paralegal","attorney","bar passage","juris doctor"],
+    audit: ["cpa certification","cpa required","audit engagement","public accounting","big four","assurance practice","sox compliance auditor"],
+    orthopedic: ["orthopedic","surgical instruments","medical device sales","cadaveric","implant","spine surgery","trauma plating"],
+    travel: ["corporate travel","travel management company","tmc","gds platform","sabre","amadeus","travel booking engine"],
+    hrtech: ["hris","workday hcm","human capital management","payroll processing","benefits administration","adp workforce","ceridian dayforce"],
+    adtech: ["demand side platform","dsp","programmatic advertising","web tagging","tag management","pixel implementation","attribution modeling","rewarded ads"],
+    mortgage: ["mortgage origination","loan servicing","underwriting","fannie mae","freddie mac","heloc","home equity loan platform"],
+    studentinfo: ["student information system","sis","enrollment management","financial aid processing","powerschool","ellucian"],
   };
   excludedDomains.forEach(domain => {
     const keywords = domainMap[domain] || [domain.toLowerCase()];
@@ -64,6 +73,13 @@ function checkHardSkip(jdText, prefs) {
       /\d+\+?\s*years?\s*(of\s+)?people\s+manag/i,
       /lead\w*\s+a?\s*team\s+of\s+\d+/i,
       /direct\s+management\s+of\s+pm/i,
+      /you('ll)?\s+manage\s+a\s+team/i,
+      /responsible\s+for\s+managing\s+\d+/i,
+      /hire\s+and\s+(develop|grow|mentor)\s+pm/i,
+      /build\s+and\s+lead\s+a\s+team/i,
+      /people\s+manager\s+experienc/i,
+      /line\s+management\s+experienc/i,
+      /experience\s+managing\s+product\s+manager/i,
     ];
     if (mgmtRequired.some(r => r.test(jdText))) {
       reasons.push("Requires people management experience");
@@ -123,9 +139,9 @@ Return ONLY valid JSON (no markdown, no fences):
   "strengths": ["<str>","<str>","<str>"],
   "gaps": ["<gap>","<gap>"],
   "transferability": {
-    "score": "<0-100 — how transferable are their skills even if domain doesn't match>",
-    "reason": "<one sentence>",
-    "verdict": "<apply with this angle: ...>"
+    "score": <0-100>,
+    "reason": "<one sentence — what skills transfer even if domain doesn't match>",
+    "angle": "<how to position the application to overcome the domain gap>"
   },
   "atsKeywords": ["<kw>",...],
   "tailoredSummary": "<2-3 sentence professional summary for this JD>",
@@ -135,8 +151,12 @@ Return ONLY valid JSON (no markdown, no fences):
     {"bullet":"<rewritten bullet>","job":"<role>","action":"<add|replace>","replaces":"<or null>"}
   ],
   "nextAction": "<specific single next step>",
-  "resumeRecommendation": {"version":"<AI|Growth|Enterprise|General|Healthcare>","reason":"<one sentence>"},
-  "estimatedCompRange": "<$X - $Y or null if unknown — estimate compensation range based on company name, role seniority, location signals, and any salary mentions. Return null if truly unknown.>",
+  "resumeRecommendation": {
+    "version": "<Choose from: AI|Growth|Enterprise|Healthcare|General>",
+    "reason": "<one sentence>",
+    "logic": "Use AI version for: AI-native companies, LLM products, developer tools, agentic systems, eval frameworks. Use Growth version for: B2C, lifecycle, member acquisition, activation, experimentation, PLG. Use Healthcare version for: digital health, clinical workflows, payer analytics, EHR, regulated health environments, patient engagement. Use Enterprise version for: data platforms, enterprise SaaS, 0-to-1 commercial launches, platform architecture, multi-tenant systems. Use General version for: broad roles, warm referrals, unclear domain, or when multiple versions apply equally."
+  },
+  "estimatedCompRange": "<$X - $Y or null if unknown. Use these real market data points to calibrate: AI-native startups Series B+: $180K-$294K for Sr/Principal PM. Digital health Series B-D: $122K-$225K for Sr PM. Enterprise SaaS growth stage: $155K-$245K for Sr PM. Big Tech (Airbnb, Instacart, Google): $190K-$280K+ for Sr PM. Healthcare IT / regulated: $120K-$180K for Sr PM. EdTech, nonprofit-adjacent: $110K-$160K. Staffing/consulting placements: deduct 15-20% from direct hire equivalent. If the JD mentions equity, add '+ equity' to the range. If no data available, return null.>",
   "perksFound": ["<perk found in JD>",...],
   "perksMatch": "<Good match|Missing preferred perks|null>",
   "compWarning": <null or "estimated comp below your target">,
@@ -846,15 +866,15 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
                   {result.gaps?.map((g,i)=><div key={i} style={{fontSize:12,color:T.charcoal,marginBottom:6,display:"flex",gap:7}}><span style={{color:T.rose,flexShrink:0}}>△</span>{g}</div>)}
                 </div>
               </div>
-              {result.transferability?.score>60&&result.fitScore<70&&(
+              {result.transferability?.score>=65&&result.fitScore<75&&(
                 <div className="card" style={{marginTop:10,padding:"16px",border:`1px solid rgba(139,168,136,0.3)`,background:"rgba(139,168,136,0.04)"}}>
-                  <SectionLabel>Transferable Skills</SectionLabel>
+                  <SectionLabel>↗ Transferable Angle</SectionLabel>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
                     <span style={{fontFamily:"'DM Mono',monospace",fontSize:18,fontWeight:700,color:T.sage}}>{result.transferability.score}</span>
                     <span style={{fontSize:12,color:T.sage,fontWeight:600}}>transferability score</span>
                   </div>
                   <div style={{fontSize:12,color:T.charcoal,lineHeight:1.6,marginBottom:4}}>{result.transferability.reason}</div>
-                  <div style={{fontSize:12,color:T.forest,fontWeight:500}}>→ {result.transferability.verdict}</div>
+                  {result.transferability.angle&&<div style={{fontSize:12,color:T.forest,fontWeight:500}}>→ {result.transferability.angle}</div>}
                 </div>
               )}
               <div className="card" style={{marginTop:10,padding:"16px"}}>
