@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { T, STATUS_CFG, STATUSES, DEFAULT_PREFS, getWeekKey, checkHardSkip, updateProfile, matchScore, topProfileTags, parseCSVData, parseBulkData } from "../lib/utils";
+import { T, STATUS_CFG, STATUSES, DEFAULT_PREFS, getWeekKey, checkHardSkip, updateProfile, matchScore, topProfileTags, parseCSVData, parseBulkData, safeParseClaudeResponse } from "../lib/utils";
 const RADIUS={sm:8,md:14,lg:20,xl:28,pill:999};
 const SHADOW={sm:"0 1px 4px rgba(28,28,28,0.06)",md:"0 4px 16px rgba(28,28,28,0.08)",lg:"0 8px 32px rgba(28,28,28,0.1)",xl:"0 16px 56px rgba(28,28,28,0.12)"};
 
@@ -119,7 +119,7 @@ async function callClaude(prompt,maxTokens=1000){
   const res=await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:maxTokens,messages:[{role:"user",content:prompt}]})});
   const data=await res.json();
   const text=data.content?.filter(b=>b.type==="text").map(b=>b.text).join("")||"";
-  return JSON.parse(text.replace(/```json|```/g,"").trim());
+  return safeParseClaudeResponse(text);
 }
 
 // ─── GLOBAL CSS ───────────────────────────────────────────────────────────────
@@ -687,7 +687,8 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
     setLoading(true);setResult(null);setSaved(false);
     try{
       const r=await callClaude(PROMPTS.analyze(resumeText,jd,profile,prefs));
-      const ms=matchScore(r.roleDNA,profile);
+      if(r._parseError){toast_("Could not parse AI response. Try again.","err");setLoading(false);return;}
+      const ms=matchScore(r?.roleDNA,profile);
       // Comp range warning
       if(r.estimatedCompRange&&r.estimatedCompRange!=="null"&&prefs?.minSalary){const nums=r.estimatedCompRange.match(/(\d[\d,]*)/g);if(nums){const maxVal=Math.max(...nums.map(n=>parseInt(n.replace(/,/g,""))));const normalizedMax=maxVal<1000?maxVal*1000:maxVal;if(normalizedMax<prefs.minSalary*0.85){r.compWarning=`Estimated comp may be below your $${Math.round(prefs.minSalary/1000)}K target`;}}}
       setResult({...r,matchScore:ms});
@@ -757,8 +758,8 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
           <div className="card" style={{padding:"20px 24px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
               <div>
-                <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:600,color:verdictColor(result.verdict)}}>{result.verdict}</div>
-                <div style={{fontSize:13,color:T.gray,marginTop:3}}>{result.verdictReason}</div>
+                <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:600,color:verdictColor(result?.verdict)}}>{result?.verdict}</div>
+                <div style={{fontSize:13,color:T.gray,marginTop:3}}>{result?.verdictReason}</div>
               </div>
               <div style={{display:"flex",gap:14,alignItems:"flex-end"}}>
                 <ScoreRing score={result.fitScore} size={56} label="FIT" tooltip="How well your background qualifies you for this role"/>
@@ -774,8 +775,8 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
             {/* Resume recommendation */}
             {result.resumeRecommendation&&(
               <div style={{padding:"10px 14px",background:"rgba(45,74,62,0.06)",borderRadius:RADIUS.md,border:`1px solid rgba(45,74,62,0.12)`,fontSize:12}}>
-                <span style={{fontWeight:700,color:T.forest}}>📄 Use: {result.resumeRecommendation.version} resume</span>
-                <span style={{color:T.gray,marginLeft:8}}>{result.resumeRecommendation.reason}</span>
+                <span style={{fontWeight:700,color:T.forest}}>📄 Use: {result.resumeRecommendation?.version} resume</span>
+                <span style={{color:T.gray,marginLeft:8}}>{result.resumeRecommendation?.reason}</span>
               </div>
             )}
             {/* Comp warning */}
@@ -815,16 +816,16 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
                 <div className="card" style={{marginTop:10,padding:"16px",border:`1px solid rgba(139,168,136,0.3)`,background:"rgba(139,168,136,0.04)"}}>
                   <SectionLabel>↗ Transferable Angle</SectionLabel>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
-                    <span style={{fontFamily:"'DM Mono',monospace",fontSize:18,fontWeight:700,color:T.sage}}>{result.transferability.score}</span>
+                    <span style={{fontFamily:"'DM Mono',monospace",fontSize:18,fontWeight:700,color:T.sage}}>{result.transferability?.score}</span>
                     <span style={{fontSize:12,color:T.sage,fontWeight:600}}>transferability score</span>
                   </div>
-                  <div style={{fontSize:12,color:T.charcoal,lineHeight:1.6,marginBottom:4}}>{result.transferability.reason}</div>
-                  {result.transferability.angle&&<div style={{fontSize:12,color:T.forest,fontWeight:500}}>→ {result.transferability.angle}</div>}
+                  <div style={{fontSize:12,color:T.charcoal,lineHeight:1.6,marginBottom:4}}>{result.transferability?.reason}</div>
+                  {result.transferability?.angle&&<div style={{fontSize:12,color:T.forest,fontWeight:500}}>→ {result.transferability?.angle}</div>}
                 </div>
               )}
               <div className="card" style={{marginTop:10,padding:"16px"}}>
                 <SectionLabel>Next Action</SectionLabel>
-                <div style={{fontSize:13,color:T.forest,fontWeight:500}}>→ {result.nextAction}</div>
+                <div style={{fontSize:13,color:T.forest,fontWeight:500}}>→ {result?.nextAction}</div>
               </div>
             </div>
           )}
@@ -832,7 +833,7 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
           {activeTab==="resume"&&(
             <div className="fade-in card" style={{padding:"18px 20px"}}>
               <SectionLabel>Tailored Summary</SectionLabel>
-              <p style={{fontSize:13,color:T.charcoal,lineHeight:1.7,marginBottom:16,padding:"10px 14px",background:T.cream,borderRadius:RADIUS.sm,borderLeft:`3px solid ${T.forest}`}}>{result.tailoredSummary}</p>
+              <p style={{fontSize:13,color:T.charcoal,lineHeight:1.7,marginBottom:16,padding:"10px 14px",background:T.cream,borderRadius:RADIUS.sm,borderLeft:`3px solid ${T.forest}`}}>{result?.tailoredSummary}</p>
               <SectionLabel>Tailored Bullets — Where to Place Them</SectionLabel>
               {result.tailoredBullets?.map((b,i)=>{
                 const bullet=typeof b==="string"?{bullet:b,job:"",action:"add",replaces:null}:b;
