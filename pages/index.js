@@ -241,7 +241,7 @@ export default function Aster(){
             targetIndustries:current.targetIndustries?.length>0?current.targetIndustries:(inferred.inferredTargetIndustries||[]),
             excludedIndustries:current.excludedIndustries?.length>0?current.excludedIndustries:(inferred.inferredExcludedIndustries||[]),
             minSalary:current.minSalary!==DEFAULT_PREFS.minSalary?current.minSalary:(inferred.inferredMinSalary||DEFAULT_PREFS.minSalary),
-            hasPeopleManagement:current.hasPeopleManagement!==false?current.hasPeopleManagement:(inferred.hasPeopleManagement||false),
+            cannotMeetRequirements:current.cannotMeetRequirements?.length>0?current.cannotMeetRequirements:(inferred.cannotMeetRequirements||[]),
             workMode:current.workMode!=="Any"?current.workMode:(inferred.workMode||"Any"),
             inferredSeniority:inferred.seniorityLevel,
             inferredSummary:inferred.summary,
@@ -401,11 +401,12 @@ function PrefsModal({prefs,onSave,onClose}){
           ))}
         </div>
 
-        {/* People management */}
-        <SectionLabel>People Management Experience</SectionLabel>
-        <div style={{display:"flex",gap:8,marginBottom:20}}>
-          {[["Yes","true"],["No — IC only","false"]].map(([label,val])=>(
-            <button key={val} onClick={()=>setP(x=>({...x,hasPeopleManagement:val==="true"}))} style={{padding:"7px 16px",borderRadius:RADIUS.pill,border:`1.5px solid ${String(p.hasPeopleManagement)===val?T.forest:T.cream3}`,background:String(p.hasPeopleManagement)===val?"rgba(45,74,62,0.08)":"transparent",color:String(p.hasPeopleManagement)===val?T.forest:T.gray,fontSize:13,cursor:"pointer",fontWeight:String(p.hasPeopleManagement)===val?600:400}}>{label}</button>
+        {/* Requirements I cannot meet */}
+        <SectionLabel>Requirements I Cannot Meet (Hard Skip)</SectionLabel>
+        <p style={{fontSize:11,color:T.gray3,marginBottom:8}}>Jobs requiring these will be flagged automatically</p>
+        <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:20}}>
+          {["Managing direct reports","Security clearance required","Travel required","On-site only","Specific certification required"].map(req=>(
+            <button key={req} onClick={()=>setP(x=>({...x,cannotMeetRequirements:toggle(x.cannotMeetRequirements||[],req)}))} style={{padding:"5px 14px",borderRadius:RADIUS.pill,border:`1.5px solid ${(p.cannotMeetRequirements||[]).includes(req)?T.rose:T.cream3}`,background:(p.cannotMeetRequirements||[]).includes(req)?"rgba(196,119,106,0.08)":"transparent",color:(p.cannotMeetRequirements||[]).includes(req)?T.rose:T.gray,fontSize:12,cursor:"pointer"}}>{req}</button>
           ))}
         </div>
 

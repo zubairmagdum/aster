@@ -10,7 +10,7 @@
     "workMode": "Remote",
     "employmentType": "Full-time",
     "seniorityTarget": "Senior",
-    "hasPeopleManagement": false,
+    "cannotMeetRequirements": [],
     "excludedIndustries": ["Gaming"],
     "excludedCities": [],
     "targetIndustries": ["AI/ML", "SaaS"],

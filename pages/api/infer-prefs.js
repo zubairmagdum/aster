@@ -25,7 +25,7 @@ Based ONLY on what is in this resume, infer:
 1. What industries/domains has this person worked in? These are their strengths.
 2. What industries/domains are completely absent from their background and would require credentials they do not have? These are natural exclusions.
 3. What is their likely compensation range based on their seniority, titles, and companies?
-4. Do they have people management experience? Look for managing teams, direct reports, leading people.
+4. Which of these role requirements can this person NOT meet based on their resume? Choose from: "Managing direct reports", "Security clearance required", "Travel required", "On-site only", "Specific certification required". Only include requirements the candidate clearly cannot meet.
 5. What seniority level are they? (Junior/Mid/Senior/Principal/Director/Executive)
 6. What work mode is most common in their background? (Remote/Hybrid/Onsite)
 
@@ -35,7 +35,7 @@ Return ONLY valid JSON:
   "inferredExcludedIndustries": ["<domain with no background>", "<domain with no background>"],
   "inferredMinSalary": <number in dollars e.g. 150000, or null if unclear>,
   "inferredMaxSalary": <number or null>,
-  "hasPeopleManagement": <true or false>,
+  "cannotMeetRequirements": ["<requirement name>"],
   "seniorityLevel": "<Junior|Mid|Senior|Principal|Director|Executive>",
   "workMode": "<Remote|Hybrid|Onsite|Any>",
   "confidence": "<high|medium|low>",
