@@ -122,6 +122,11 @@ Return ONLY valid JSON (no markdown, no fences):
   "verdictReason": "<one punchy sentence>",
   "strengths": ["<str>","<str>","<str>"],
   "gaps": ["<gap>","<gap>"],
+  "transferability": {
+    "score": "<0-100 — how transferable are their skills even if domain doesn't match>",
+    "reason": "<one sentence>",
+    "verdict": "<apply with this angle: ...>"
+  },
   "atsKeywords": ["<kw>",...],
   "tailoredSummary": "<2-3 sentence professional summary for this JD>",
   "tailoredBullets": [
@@ -805,6 +810,17 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
                   {result.gaps?.map((g,i)=><div key={i} style={{fontSize:12,color:T.charcoal,marginBottom:6,display:"flex",gap:7}}><span style={{color:T.rose,flexShrink:0}}>△</span>{g}</div>)}
                 </div>
               </div>
+              {result.transferability?.score>60&&result.fitScore<70&&(
+                <div className="card" style={{marginTop:10,padding:"16px",border:`1px solid rgba(139,168,136,0.3)`,background:"rgba(139,168,136,0.04)"}}>
+                  <SectionLabel>Transferable Skills</SectionLabel>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+                    <span style={{fontFamily:"'DM Mono',monospace",fontSize:18,fontWeight:700,color:T.sage}}>{result.transferability.score}</span>
+                    <span style={{fontSize:12,color:T.sage,fontWeight:600}}>transferability score</span>
+                  </div>
+                  <div style={{fontSize:12,color:T.charcoal,lineHeight:1.6,marginBottom:4}}>{result.transferability.reason}</div>
+                  <div style={{fontSize:12,color:T.forest,fontWeight:500}}>→ {result.transferability.verdict}</div>
+                </div>
+              )}
               <div className="card" style={{marginTop:10,padding:"16px"}}>
                 <SectionLabel>Next Action</SectionLabel>
                 <div style={{fontSize:13,color:T.forest,fontWeight:500}}>→ {result.nextAction}</div>
