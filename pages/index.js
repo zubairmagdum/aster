@@ -161,7 +161,7 @@ Return ONLY valid JSON (no markdown, no fences):
     "version": "<best matching resume version label from user's saved versions, or null if none exist>",
     "reason": "<one sentence explaining the match. If no versions exist, suggest the user visit the Resume tab to generate positioning angles.>"
   },
-  "estimatedCompRange": "<$X - $Y or null if unknown. Estimate compensation range based on company size, funding stage, role seniority level, location signals, and any salary mentions in the JD. Return a range if you can make a reasonable estimate, null if not enough signal.>",
+  "estimatedCompRange": "<$X - $Y or null. Estimate compensation range based only on signals in this JD: explicit salary mentions, company name and size, role seniority, location, and equity mentions. Do not use external benchmarks. Return null if insufficient signal.>",
   "perksFound": ["<perk found in JD>",...],
   "perksMatch": "<Good match|Missing preferred perks|null>",
   "compWarning": <null or "estimated comp below your target">,
@@ -697,7 +697,7 @@ function DashboardView({jobs,contacts,profile,resumeText,setView,setActiveJobId,
         </div>
         <div className="card" style={{padding:"22px 24px"}}>
           <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:600,color:T.charcoal,marginBottom:14}}>Your Role Profile</div>
-          {topDomains.length===0?(<div style={{fontSize:13,color:T.gray2,lineHeight:1.7}}>Your profile builds as you analyze jobs. Start by pasting a job description.</div>):(<><SectionLabel>Top Domains</SectionLabel><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>{topDomains.map(d=><span key={d} className="tag" style={{background:"rgba(79,138,114,0.08)",color:T.forest,borderColor:"rgba(79,138,114,0.15)"}}>{d}</span>)}</div><SectionLabel>Top Product Types</SectionLabel><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>{topTypes.map(t=><span key={t} className="tag" style={{background:"rgba(184,151,90,0.08)",color:T.gold,borderColor:"rgba(184,151,90,0.15)"}}>{t}</span>)}</div>{nextActions?.warning&&<div style={{fontSize:12,color:T.rose,marginTop:8}}>⚠ {nextActions.warning}</div>}</>)}
+          {topDomains.length===0?(<div style={{fontSize:13,color:T.gray2,lineHeight:1.7}}>Your profile builds as you analyze jobs. Start by pasting a job description.</div>):(<><SectionLabel>Top Domains</SectionLabel><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>{topDomains.map(d=><span key={d} className="tag" style={{background:"rgba(79,138,114,0.08)",color:T.forest,borderColor:"rgba(79,138,114,0.15)"}}>{d}</span>)}</div><SectionLabel>Top Product Types</SectionLabel><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>{topTypes.map(t=><span key={t} className="tag" style={{background:"rgba(184,151,90,0.08)",color:T.gold,borderColor:"rgba(184,151,90,0.15)"}}>{t}</span>)}</div>{(()=>{const compJobs=jobs.filter(j=>j.estimatedCompRange&&j.estimatedCompRange!=="null"&&j.roleDNA?.domain);if(compJobs.length<5)return null;const byDomain={};compJobs.forEach(j=>{const d=j.roleDNA.domain;const nums=j.estimatedCompRange.match(/(\d[\d,]*)/g);if(!nums)return;const vals=nums.map(n=>{const v=parseInt(n.replace(/,/g,""));return v<1000?v*1000:v;});if(!byDomain[d])byDomain[d]=[];byDomain[d].push(...vals);});const entries=Object.entries(byDomain).filter(([,v])=>v.length>=2).map(([d,v])=>({domain:d,avg:Math.round(v.reduce((a,b)=>a+b,0)/v.length/1000)}));if(!entries.length)return null;return(<div style={{marginBottom:14}}><SectionLabel>Market Signals</SectionLabel><div style={{fontSize:12,color:T.gray,lineHeight:1.7}}>Based on your pipeline: {entries.map(e=>`${e.domain} roles avg $${e.avg}K`).join(", ")}</div></div>);})()}{nextActions?.warning&&<div style={{fontSize:12,color:T.rose,marginTop:8}}>⚠ {nextActions.warning}</div>}</>)}
           <button className="btn-ghost" style={{width:"100%",marginTop:14,fontSize:12}} onClick={()=>setView("analyze")}>Analyze a job →</button>
         </div>
       </div>
@@ -763,7 +763,7 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
 
   const save=()=>{
     if(!company||!role){toast_("Add company and role name first","err");return;}
-    const job=addJob({company,role,status:saveStatus,fitScore:result?.fitScore,matchScore:result?.matchScore,roleDNA:result?.roleDNA,aiAnalysis:result,atsScore:result?.atsKeywords?.length||0,notes:"",interestRating:3});
+    const job=addJob({company,role,status:saveStatus,fitScore:result?.fitScore,matchScore:result?.matchScore,roleDNA:result?.roleDNA,aiAnalysis:result,estimatedCompRange:result?.estimatedCompRange||null,atsScore:result?.atsKeywords?.length||0,notes:"",interestRating:3});
     setSaved(true);
     toast_(`${company} saved as "${saveStatus}" ✦`);
   };
