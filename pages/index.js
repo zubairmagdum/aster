@@ -1345,7 +1345,8 @@ function ImportHistoryModal({onClose,setJobs,toast_}){
 
   const parseCSV=()=>{
     const lines=csv.trim().split("\n").filter(l=>l.trim());
-    const data=lines.map(line=>{
+    const dataLines=lines.filter(l=>!l.toLowerCase().startsWith("company,"));
+    const data=dataLines.map(line=>{
       const parts=line.split(",").map(s=>s.trim());
       const [company,role,date,outcome,notes]=parts;
       if(!company||!role)return null;
