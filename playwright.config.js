@@ -8,6 +8,7 @@ export default defineConfig({
     ['html', { open: 'never' }],
     ['list'],
     ['./tests/reporters/bug-package-reporter.js'],
+    ['./tests/reporters/claude-prompt-reporter.js'],
   ],
   use: {
     baseURL: 'http://localhost:3000',
