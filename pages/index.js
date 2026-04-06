@@ -129,6 +129,7 @@ USER PREFERENCES:
 - Employment type: ${prefs?.employmentType||"Full-time"}
 - Work mode: ${prefs?.workMode||"Any"}
 - Important perks: ${(prefs?.importantPerks||[]).join(', ')||'none'}
+- Target industries: ${[...(prefs?.targetIndustries||[]),...(prefs?.customTargetIndustries?.split(',').map(s=>s.trim()).filter(Boolean)||[])].join(', ')||'not specified'}
 
 RESUME VERSIONS:
 ${(()=>{try{const v=JSON.parse(localStorage.getItem("aster_resume_versions"));return v?.versions?.map(x=>x.label).join(", ")||"None created yet";}catch{return "None created yet";}})()}
@@ -449,7 +450,7 @@ export default function Aster(){
       <main style={{maxWidth:1200,margin:"0 auto",padding:"28px 32px"}}>
         {view==="dashboard"&&<DashboardView jobs={jobs} contacts={contacts} profile={profile} resumeText={resumeText} setView={setView} setActiveJobId={setActiveJobId} updateJob={updateJob} toast_={toast_} prefs={prefs}/>}
         {view==="analyze"&&<AnalyzeView jobs={jobs} profile={profile} prefs={prefs} resumeText={resumeText} addJob={addJob} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_}/>}
-        {view==="pipeline"&&<PipelineView jobs={jobs} contacts={contacts} updateJob={updateJob} removeJob={removeJob} setJobs={setJobs} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_}/>}
+        {view==="pipeline"&&<PipelineView jobs={jobs} contacts={contacts} updateJob={updateJob} removeJob={removeJob} setJobs={setJobs} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} resumeText={resumeText}/>}
         {view==="outreach"&&<OutreachView jobs={jobs} contacts={contacts} setContacts={setContacts} resumeText={resumeText} activeJob={activeJob} setActiveJobId={setActiveJobId} toast_={toast_}/>}
         {view==="strategy"&&<StrategyView jobs={jobs} profile={profile} prefs={prefs}/>}
         {view==="workshop"&&<ResumeWorkshopView resumeText={resumeText} toast_={toast_}/>}
@@ -987,12 +988,14 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
 }
 
 // ─── PIPELINE VIEW ────────────────────────────────────────────────────────────
-function PipelineView({jobs,contacts,updateJob,removeJob,setJobs,setView,setActiveJobId,toast_}){
+function PipelineView({jobs,contacts,updateJob,removeJob,setJobs,setView,setActiveJobId,toast_,resumeText}){
   const [filter,setFilter]=useState("All");
   const [expanded,setExpanded]=useState(null);
   const [selectedIds,setSelectedIds]=useState([]);
   const [bulkStatus,setBulkStatus]=useState("Applied");
   const [showImport,setShowImport]=useState(false);
+  const [prepJobId,setPrepJobId]=useState(null);
+  const [prepLoading,setPrepLoading]=useState(false);
   const filtered=jobs.filter(j=>filter==="All"||j.status===filter);
 
   const toggleSelect=(id)=>setSelectedIds(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);
@@ -1001,12 +1004,61 @@ function PipelineView({jobs,contacts,updateJob,removeJob,setJobs,setView,setActi
   const deselectAll=()=>setSelectedIds([]);
   const applyBulk=()=>{const count=selectedIds.length;selectedIds.forEach(id=>updateJob(id,{status:bulkStatus}));setSelectedIds([]);toast_(`Updated ${count} jobs to "${bulkStatus}"`);};
 
+  const runInterviewPrep=async(job)=>{
+    setPrepJobId(job.id);setPrepLoading(true);
+    try{
+      const r=await callClaude(`You are an interview coach. Given this role: ${job.role} at ${job.company}, generate interview preparation material.${resumeText?`\n\nCandidate resume:\n${resumeText.slice(0,2000)}`:""}\n\nReturn ONLY valid JSON:\n{\n  "questions": [\n    {"question": "<likely interview question>", "starStory": "<STAR story from resume that best answers this, or suggested approach if no resume>"}\n  ],\n  "research": ["<thing to research before interview>", "<thing 2>", "<thing 3>"]\n}`,1200);
+      updateJob(job.id,{interviewPrep:r});
+    }catch{toast_("Interview prep failed","err");}
+    setPrepLoading(false);
+  };
+
+  const exportCSV=()=>{
+    const header="Company,Role,Status,Date Added,Fit Score,Match Score,Notes";
+    const rows=jobs.map(j=>[j.company,j.role,j.status,j.dateAdded||"",j.fitScore??"",j.matchScore??"",`"${(j.notes||"").replace(/"/g,'""')}"`].join(","));
+    const csv=header+"\n"+rows.join("\n");
+    const blob=new Blob([csv],{type:"text/csv"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download="aster-pipeline.csv";a.click();URL.revokeObjectURL(url);
+    toast_("Pipeline exported as CSV");
+  };
+
+  const prepJob=jobs.find(j=>j.id===prepJobId);
+
   return(
     <div className="fade-up">
       {showImport&&<ImportHistoryModal onClose={()=>setShowImport(false)} setJobs={setJobs} toast_={toast_}/>}
+      {/* Interview Prep Modal */}
+      {prepJobId&&(
+        <div style={{position:"fixed",inset:0,zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(28,28,28,0.4)"}}>
+          <div style={{background:T.white,borderRadius:RADIUS.xl,padding:"32px",width:640,maxHeight:"85vh",overflowY:"auto",boxShadow:SHADOW.xl}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <div><div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:600,color:T.charcoal}}>Interview Prep</div><div style={{fontSize:13,color:T.gray}}>{prepJob?.role} at {prepJob?.company}</div></div>
+              <button onClick={()=>setPrepJobId(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:T.gray3}}>✕</button>
+            </div>
+            {prepLoading&&<div style={{textAlign:"center",padding:"40px"}}><Spinner/><p style={{fontSize:13,color:T.gray2,marginTop:12}}>Generating interview prep...</p></div>}
+            {prepJob?.interviewPrep&&!prepLoading&&(
+              <div className="fade-in">
+                <SectionLabel>Likely Questions & Your Best Answers</SectionLabel>
+                {prepJob.interviewPrep.questions?.map((q,i)=>(
+                  <div key={i} style={{marginBottom:14,padding:"14px 16px",background:T.cream,borderRadius:RADIUS.md,border:`1px solid ${T.cream3}`}}>
+                    <div style={{fontSize:13,fontWeight:600,color:T.charcoal,marginBottom:6}}>{i+1}. {q.question}</div>
+                    <div style={{fontSize:12,color:T.gray,lineHeight:1.7}}>{q.starStory}</div>
+                  </div>
+                ))}
+                <SectionLabel>Research Before the Interview</SectionLabel>
+                {prepJob.interviewPrep.research?.map((r,i)=>(
+                  <div key={i} style={{fontSize:12,color:T.charcoal,marginBottom:4,display:"flex",gap:7}}><span style={{color:T.forest}}>→</span>{r}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div style={{fontFamily:"'Playfair Display',serif",fontSize:26,fontWeight:600,color:T.charcoal}}>Your Pipeline</div>
         <div style={{display:"flex",gap:8}}>
+          <button className="btn-ghost" onClick={exportCSV} style={{fontSize:13,padding:"9px 22px"}}>Export CSV</button>
           <button className="btn-ghost" onClick={()=>setShowImport(true)} style={{fontSize:13,padding:"9px 22px"}}>Import History</button>
           <button className="btn-primary" onClick={()=>setView("analyze")} style={{fontSize:13,padding:"9px 22px"}}>+ Analyze New Job</button>
         </div>
@@ -1086,7 +1138,7 @@ function PipelineView({jobs,contacts,updateJob,removeJob,setJobs,setView,setActi
                     {job.aiAnalysis?.tailoredSummary&&(<div style={{marginBottom:12}}><SectionLabel>Tailored Summary</SectionLabel><p style={{fontSize:12,color:T.gray,lineHeight:1.6}}>{job.aiAnalysis.tailoredSummary}</p></div>)}
                     <div style={{display:"flex",gap:8}}>
                       <button onClick={()=>{setActiveJobId(job.id);setView("outreach");}} className="btn-ghost" style={{fontSize:12,padding:"7px 16px"}}>✉ Outreach</button>
-                      {["HM Interview","Final Round"].includes(job.status)&&<button className="btn-ghost" style={{fontSize:12,padding:"7px 16px"}}>🧠 Interview Prep</button>}
+                      {["HM Interview","Final Round"].includes(job.status)&&<button onClick={()=>{if(job.interviewPrep){setPrepJobId(job.id);}else{runInterviewPrep(job);}}} className="btn-ghost" style={{fontSize:12,padding:"7px 16px"}}>{prepLoading&&prepJobId===job.id?<Spinner/>:"🧠 Interview Prep"}</button>}
                       <button onClick={()=>removeJob(job.id)} style={{fontSize:12,color:T.rose,background:"none",border:"none",cursor:"pointer",marginLeft:"auto"}}>Remove</button>
                     </div>
                   </div>
