@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import Head from "next/head";
 import { T, STATUS_CFG, STATUSES, DEFAULT_PREFS, getWeekKey, checkHardSkip, updateProfile, matchScore, topProfileTags, parseCSVData, parseBulkData, safeParseClaudeResponse, checkDuplicate } from "../lib/utils";
 const RADIUS={sm:8,md:14,lg:20,xl:28,pill:999};
 const SHADOW={sm:"0 1px 4px rgba(28,28,28,0.06)",md:"0 4px 16px rgba(28,28,28,0.08)",lg:"0 8px 32px rgba(28,28,28,0.1)",xl:"0 16px 56px rgba(28,28,28,0.12)"};
@@ -307,6 +308,7 @@ export default function Aster(){
 
   return(
     <div style={{minHeight:"100vh",background:T.cream}}>
+      <Head><title>Aster — Your career, in bloom.</title></Head>
       <style>{GLOBAL_CSS}</style>
       {toast&&<Toast msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
       {showPrefs&&<PrefsModal prefs={prefs} onSave={savePrefs} onClose={()=>setShowPrefs(false)}/>}
