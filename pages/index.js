@@ -246,6 +246,13 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
 .tooltip-wrap{position:relative;display:inline-flex;align-items:center;}
 .tooltip-wrap:hover .tooltip-box{opacity:1;pointer-events:auto;}
 .tooltip-box{opacity:0;pointer-events:none;transition:opacity 0.15s;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:${T.charcoal};color:${T.white};font-size:11px;padding:6px 10px;border-radius:8px;white-space:nowrap;z-index:1000;line-height:1.5;max-width:220px;white-space:normal;text-align:center;}
+@media(max-width:900px){
+  .nav-links{display:none !important;}
+  .nav-right{display:none !important;}
+  .nav-tagline{display:none !important;}
+  .nav-hamburger{display:block !important;}
+  .nav-mobile-dropdown{display:flex !important;}
+}
 `;
 
 // ─── STATUS CONFIG ────────────────────────────────────────────────────────────
@@ -302,6 +309,7 @@ export default function Aster(){
   const [toast,setToast]=useState(null);
   const [activeJobId,setActiveJobId]=useState(null);
   const [showPrefs,setShowPrefs]=useState(false);
+  const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
 
   useEffect(()=>{if(resumeText){Store.set("aster_resume",resumeText);Store.set("aster_resume_name",resumeFileName);}},[resumeText]);
   useEffect(()=>{Store.set("aster_jobs",jobs);},[jobs]);
@@ -350,21 +358,37 @@ export default function Aster(){
       <nav style={{background:T.white,borderBottom:`1px solid ${T.cream2}`,padding:"0 32px",height:58,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 0 rgba(28,28,28,0.04)"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <span style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:600,color:T.forest,letterSpacing:"-0.01em"}}>✦ Aster</span>
-          <span style={{width:1,height:18,background:T.cream3,margin:"0 8px"}}/>
-          <span style={{fontSize:12,color:T.gray2}}>Your career, in bloom.</span>
+          <span className="nav-tagline" style={{width:1,height:18,background:T.cream3,margin:"0 8px"}}/>
+          <span className="nav-tagline" style={{fontSize:12,color:T.gray2}}>Your career, in bloom.</span>
         </div>
-        <div style={{display:"flex",gap:4}}>
-          {[["dashboard","Dashboard"],["analyze","Analyze JD"],["pipeline","Pipeline"],["outreach","Outreach"],["strategy","Strategy"],["workshop","Workshop"]].map(([id,label])=>(
+        <div className="nav-links" style={{display:"flex",gap:4}}>
+          {[["dashboard","Dashboard"],["analyze","Analyze"],["pipeline","Pipeline"],["outreach","Outreach"],["strategy","Strategy"],["workshop","Resume"]].map(([id,label])=>(
             <button key={id} className="nav-pill" onClick={()=>setView(id)} style={{background:view===id?T.forest:"transparent",color:view===id?T.white:T.gray,fontWeight:view===id?600:400}}>{label}</button>
           ))}
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
+        {/* Hamburger for mobile */}
+        <button className="nav-hamburger" onClick={()=>setMobileMenuOpen(v=>!v)} style={{display:"none",background:"none",border:"none",cursor:"pointer",fontSize:22,color:T.charcoal,padding:4}}>
+          {mobileMenuOpen?"✕":"☰"}
+        </button>
+        <div className="nav-right" style={{display:"flex",alignItems:"center",gap:10}}>
           {resumeFileName&&<span style={{fontSize:12,color:T.sage,display:"flex",alignItems:"center",gap:5}}><span>📄</span>{resumeFileName.slice(0,20)}</span>}
           <button onClick={()=>setShowPrefs(true)} style={{fontSize:12,color:T.gray,background:"none",border:`1px solid ${T.cream3}`,borderRadius:RADIUS.pill,padding:"5px 14px",cursor:"pointer"}}>⚙ Prefs</button>
           {!email&&<button className="btn-ghost" style={{padding:"6px 16px",fontSize:12}} onClick={()=>{const e=prompt("Enter your email to save your workspace:");if(e?.includes("@"))captureEmail(e);}}>Save workspace</button>}
           <button onClick={()=>setScreen("admin")} style={{fontSize:11,color:T.gray3,background:"none",border:"none",cursor:"pointer"}}>Admin</button>
         </div>
       </nav>
+      {/* Mobile dropdown */}
+      {mobileMenuOpen&&(
+        <div className="nav-mobile-dropdown" style={{position:"sticky",top:58,zIndex:99,background:T.white,borderBottom:`1px solid ${T.cream2}`,padding:"12px 32px",display:"none",flexDirection:"column",gap:4,boxShadow:SHADOW.md}}>
+          {[["dashboard","Dashboard"],["analyze","Analyze"],["pipeline","Pipeline"],["outreach","Outreach"],["strategy","Strategy"],["workshop","Resume"]].map(([id,label])=>(
+            <button key={id} className="nav-pill" onClick={()=>{setView(id);setMobileMenuOpen(false);}} style={{background:view===id?T.forest:"transparent",color:view===id?T.white:T.gray,fontWeight:view===id?600:400,textAlign:"left",width:"100%"}}>{label}</button>
+          ))}
+          <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
+            <button onClick={()=>{setShowPrefs(true);setMobileMenuOpen(false);}} style={{fontSize:12,color:T.gray,background:"none",border:`1px solid ${T.cream3}`,borderRadius:RADIUS.pill,padding:"5px 14px",cursor:"pointer"}}>⚙ Prefs</button>
+            <button onClick={()=>{setScreen("admin");setMobileMenuOpen(false);}} style={{fontSize:11,color:T.gray3,background:"none",border:"none",cursor:"pointer"}}>Admin</button>
+          </div>
+        </div>
+      )}
 
       <main style={{maxWidth:1200,margin:"0 auto",padding:"28px 32px"}}>
         {view==="dashboard"&&<DashboardView jobs={jobs} contacts={contacts} profile={profile} resumeText={resumeText} setView={setView} setActiveJobId={setActiveJobId} updateJob={updateJob} toast_={toast_} prefs={prefs}/>}
