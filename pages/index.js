@@ -6,11 +6,12 @@ const SHADOW={sm:"0 1px 4px rgba(28,28,28,0.06)",md:"0 4px 16px rgba(28,28,28,0.
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
 const Analytics = {
   userId:()=>{let id=localStorage.getItem("aster_uid");if(!id){id="anon_"+Math.random().toString(36).slice(2,10);localStorage.setItem("aster_uid",id);}return id;},
-  track:(event,meta={})=>{const events=JSON.parse(localStorage.getItem("aster_events")||"[]");events.push({event,userId:Analytics.userId(),ts:new Date().toISOString(),week:getWeekKey(),...meta});localStorage.setItem("aster_events",JSON.stringify(events.slice(-2000)));},
+  track:(event,meta={})=>{const events=JSON.parse(localStorage.getItem("aster_events")||"[]");events.push({event,userId:Analytics.userId(),ts:new Date().toISOString(),week:getWeekKey(),...meta});try{localStorage.setItem("aster_events",JSON.stringify(events.slice(-500)));}catch{}},
   getWeeklyRollup:()=>{const events=JSON.parse(localStorage.getItem("aster_events")||"[]");const byWeek={};events.forEach(e=>{const w=e.week||getWeekKey(e.ts);if(!byWeek[w])byWeek[w]={week:w,users:new Set(),resumes:0,jds:0,fitScores:0,outreach:0,emailCaptures:0};byWeek[w].users.add(e.userId);if(e.event==="resume_upload")byWeek[w].resumes++;if(e.event==="jd_analyzed")byWeek[w].jds++;if(e.event==="fit_score_generated")byWeek[w].fitScores++;if(e.event==="outreach_generated")byWeek[w].outreach++;if(e.event==="email_captured")byWeek[w].emailCaptures++;});return Object.values(byWeek).map(w=>({...w,wau:w.users.size,users:undefined})).sort((a,b)=>b.week.localeCompare(a.week));}
 };
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
-const Store={get:(k,fb=null)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}}};
+let _storageQuotaError=false;
+const Store={get:(k,fb=null)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{_storageQuotaError=true;}}};
 
 // ─── RESUME PARSER ────────────────────────────────────────────────────────────
 async function parseResume(file){
@@ -217,7 +218,18 @@ export default function Aster(){
   const [contacts,setContacts]=useState(()=>Store.get("aster_contacts",[]));
   const [profile,setProfile]=useState(()=>Store.get("aster_profile",{}));
   const [email,setEmail]=useState(()=>Store.get("aster_email",""));
-  const [prefs,setPrefs]=useState(()=>Store.get("aster_prefs",DEFAULT_PREFS));
+  const [prefs,setPrefs]=useState(()=>{
+    const p=Store.get("aster_prefs",DEFAULT_PREFS);
+    // Migrate old schema: hasPeopleManagement → cannotMeetRequirements
+    if(p.hasPeopleManagement!==undefined){
+      if(p.hasPeopleManagement===false&&!(p.cannotMeetRequirements||[]).includes("Managing direct reports")){
+        p.cannotMeetRequirements=[...(p.cannotMeetRequirements||[]),"Managing direct reports"];
+      }
+      delete p.hasPeopleManagement;
+      Store.set("aster_prefs",p);
+    }
+    return{...DEFAULT_PREFS,...p};
+  });
   const [view,setView]=useState("dashboard");
   const [toast,setToast]=useState(null);
   const [activeJobId,setActiveJobId]=useState(null);
@@ -229,6 +241,9 @@ export default function Aster(){
   useEffect(()=>{Store.set("aster_contacts",contacts);},[contacts]);
   useEffect(()=>{Store.set("aster_profile",profile);},[profile]);
   useEffect(()=>{Store.set("aster_prefs",prefs);},[prefs]);
+
+  // Check for storage quota errors after any state save
+  useEffect(()=>{if(_storageQuotaError){_storageQuotaError=false;setToast({msg:"Storage full — clear some applications to continue",type:"err"});}},[jobs,contacts,profile,prefs]);
 
   const toast_=(msg,type="ok")=>setToast({msg,type});
   const [inferring,setInferring]=useState(false);
@@ -388,7 +403,7 @@ function PrefsModal({prefs,onSave,onClose}){
         <SectionLabel>Minimum Salary Target</SectionLabel>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
           <span style={{fontSize:14,color:T.gray}}>$</span>
-          <input className="input-base" type="number" value={p.minSalary/1000} onChange={e=>setP(x=>({...x,minSalary:parseInt(e.target.value)*1000||0}))} style={{width:120}} placeholder="175"/>
+          <input className="input-base" type="number" value={p.minSalary/1000} onChange={e=>{const v=parseInt(e.target.value,10);setP(x=>({...x,minSalary:Number.isFinite(v)?v*1000:0}));}} style={{width:120}} placeholder="175"/>
           <span style={{fontSize:13,color:T.gray}}>K / year</span>
         </div>
 
