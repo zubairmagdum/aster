@@ -73,15 +73,15 @@ function checkHardSkip(jdText, prefs) {
       /manag\w+ \d+\+?\s*(direct\s+)?report/i,
       /\d+\+?\s*years?\s*(of\s+)?people\s+manag/i,
       /lead\w*\s+a?\s*team\s+of\s+\d+/i,
-      /direct\s+management\s+of\s+pm/i,
+      /direct\s+management\s+of\s+(a\s+)?team/i,
       /you('ll)?\s+manage\s+a\s+team/i,
       /responsible\s+for\s+managing\s+\d+/i,
-      /hire\s+and\s+(develop|grow|mentor)\s+pm/i,
+      /hire\s+and\s+(develop|grow|mentor)\s+\w+/i,
       /build\s+and\s+lead\s+a\s+team/i,
       /people\s+manager\s+experienc/i,
       /line\s+management\s+experienc/i,
-      /experience\s+managing\s+product\s+manager/i,
-      /manage\s+a\s+portfolio\s+of\s+pm/i,
+      /experience\s+managing\s+(a\s+)?team/i,
+      /manage\s+a\s+portfolio\s+of\s+\w+/i,
       /\d+\+?\s*direct\s+reports/i,
     ];
     if (mgmtRequired.some(r => r.test(jdText))) {
@@ -116,7 +116,7 @@ const PROMPTS = {
 
 JD (first 600 chars): ${jdText.slice(0,600)}`,
 
-  analyze: (resumeText, jd, profile, prefs) => `You are an expert PM recruiter and career strategist.
+  analyze: (resumeText, jd, profile, prefs) => `You are an expert recruiter and career strategist.
 
 CANDIDATE RESUME:
 ${resumeText?.slice(0,2500)||"Not provided"}
@@ -129,6 +129,9 @@ USER PREFERENCES:
 - Employment type: ${prefs?.employmentType||"Full-time"}
 - Work mode: ${prefs?.workMode||"Any"}
 - Important perks: ${(prefs?.importantPerks||[]).join(', ')||'none'}
+
+RESUME VERSIONS:
+${(()=>{try{const v=JSON.parse(localStorage.getItem("aster_resume_versions"));return v?.versions?.map(x=>x.label).join(", ")||"None created yet";}catch{return "None created yet";}})()}
 
 JOB DESCRIPTION:
 ${jd?.slice(0,2000)}
@@ -155,8 +158,8 @@ Return ONLY valid JSON (no markdown, no fences):
   ],
   "nextAction": "<specific single next step>",
   "resumeRecommendation": {
-    "version": "<best matching resume version label, or null if user has no versions>",
-    "reason": "<one sentence — based on the job description, recommend which of the user's resume versions best fits this role. If the user has not created resume versions yet, return null. When versions exist, match based on the positioning angle of each version versus the requirements of this role.>"
+    "version": "<best matching resume version label from user's saved versions, or null if none exist>",
+    "reason": "<one sentence explaining the match. If no versions exist, suggest the user visit the Resume tab to generate positioning angles.>"
   },
   "estimatedCompRange": "<$X - $Y or null if unknown. Estimate compensation range based on company size, funding stage, role seniority level, location signals, and any salary mentions in the JD. Return a range if you can make a reasonable estimate, null if not enough signal.>",
   "perksFound": ["<perk found in JD>",...],
@@ -309,13 +312,14 @@ const DEFAULT_PREFS={
   minSalary:150000,
   workMode:"Any",
   employmentType:"Full-time",
-  seniorityTarget:"Sr PM",
+  seniorityTarget:"Senior",
   hasPeopleManagement:false,
   excludedIndustries:[],
   excludedCities:[],
   targetIndustries:[],
   importantPerks:[],
   customExclusions:"",
+  customTargetIndustries:"",
 };
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
@@ -480,11 +484,12 @@ function PrefsModal({prefs,onSave,onClose}){
 
         {/* Target industries */}
         <SectionLabel>Industries I Want</SectionLabel>
-        <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:20}}>
+        <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:12}}>
           {INDUSTRIES.map(ind=>(
             <button key={ind} onClick={()=>setP(x=>({...x,targetIndustries:toggle(x.targetIndustries||[],ind)}))} style={{padding:"5px 14px",borderRadius:RADIUS.pill,border:`1.5px solid ${(p.targetIndustries||[]).includes(ind)?T.forest:T.cream3}`,background:(p.targetIndustries||[]).includes(ind)?"rgba(45,74,62,0.08)":"transparent",color:(p.targetIndustries||[]).includes(ind)?T.forest:T.gray,fontSize:12,cursor:"pointer"}}>{ind}</button>
           ))}
         </div>
+        <input className="input-base" value={p.customTargetIndustries||""} onChange={e=>setP(x=>({...x,customTargetIndustries:e.target.value}))} placeholder="Other industries you want, comma separated" style={{marginBottom:20,fontSize:12}}/>
 
         {/* Excluded industries */}
         <SectionLabel>Industries to Exclude (Hard Skip)</SectionLabel>
@@ -545,7 +550,7 @@ function Onboarding({onComplete,onResumeUploaded,resumeFileName,email,onEmail}){
         {step==="welcome"&&(
           <div className="bloom" style={{textAlign:"center",maxWidth:520,margin:"0 auto",padding:"60px 20px"}}>
             <div style={{fontFamily:"'Playfair Display',serif",fontSize:48,fontWeight:600,color:T.forest,lineHeight:1.15,marginBottom:16}}>Land the job<br/><em style={{color:T.rose}}>you actually want.</em></div>
-            <p style={{fontSize:17,color:T.gray,lineHeight:1.7,marginBottom:36}}>Aster is your AI-powered job search copilot. Fit scores, tailored resumes, outreach messages — all in one place. Start in 30 seconds.</p>
+            <p style={{fontSize:17,color:T.gray,lineHeight:1.7,marginBottom:36}}>Aster is your AI-powered job search copilot. Analyze opportunities, tailor your materials, and build your outreach strategy — all in one place. Start in 30 seconds.</p>
             <div style={{display:"flex",flexDirection:"column",gap:10,alignItems:"center"}}>
               <button className="btn-primary" style={{fontSize:15,padding:"14px 40px"}} onClick={()=>setStep("upload")}>Get started — it is free</button>
               <button onClick={onComplete} style={{fontSize:12,color:T.gray2,background:"none",border:"none",cursor:"pointer"}}>Skip onboarding, take me to the app</button>
@@ -655,8 +660,8 @@ function DashboardView({jobs,contacts,profile,resumeText,setView,setActiveJobId,
       ):null}
       {/* Health indicator */}
       <div style={{padding:"14px 20px",background:healthColor+"1A",borderLeft:`4px solid ${healthColor}`,borderRadius:RADIUS.md,marginBottom:14}}>
-        <span style={{fontSize:13,fontWeight:700,color:healthColor}}>{healthState}</span>
-        <span style={{fontSize:13,color:healthColor,marginLeft:10}}>{healthReason}</span>
+        <div><span style={{fontSize:13,fontWeight:700,color:healthColor}}>{healthState}</span><span style={{fontSize:13,color:healthColor,marginLeft:10}}>{healthReason}</span></div>
+        <div style={{fontSize:10,color:T.gray3,marginTop:4}}>Based on your activity this week</div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
         {[{label:"Tracked",val:jobs.length,icon:"🗂️",color:T.forest},{label:"Applied",val:appliedJobs.length,icon:"📬",color:T.forest2},{label:"Active Pipeline",val:activeJobs.length,icon:"⚡",color:"#5B9BD5"},{label:"Screen Rate",val:`${screenRate}%`,icon:"🎯",color:screenRate>10?T.ok:screenRate>5?T.gold:T.rose}].map(s=>(
@@ -1310,6 +1315,7 @@ function StrategyView({jobs,profile,prefs}){
   const activeJobs=jobs.filter(j=>["Recruiter Screen","HM Interview","Final Round"].includes(j.status));
   const screenRate=appliedJobs.length>0?Math.round(activeJobs.length/appliedJobs.length*100):0;
   const topDomains=topProfileTags(profile,"domain",3);
+  const topTypes=topProfileTags(profile,"productType",3);
   const now=new Date();
   const applicationsThisWeek=jobs.filter(j=>{if(!j.dateAdded)return false;return(now-new Date(j.dateAdded))/86400000<=7&&!["Saved","Ready to Apply","Skipped"].includes(j.status);}).length;
 
@@ -1325,7 +1331,8 @@ What's working: ${working}
 What's not working: ${notWorking}
 Applications this week: ${applicationsThisWeek}
 Response rate: ${screenRate}%
-Top domains in profile: ${topDomains.join(", ")}
+Top domains from search history: ${topDomains.join(", ")||"none yet"}
+Top role types from search history: ${topTypes.join(", ")||"none yet"}
 
 Return ONLY valid JSON:
 {
@@ -1394,23 +1401,24 @@ function ResumeWorkshopView({resumeText,toast_}){
   const analyze=async()=>{
     setLoading(true);
     try{
-      const prompt=`You are a senior career strategist. Analyze this resume and identify the 3 most distinct and credible positioning angles for this candidate's job search. Each angle should target a genuinely different market.
+      const prompt=`You are a senior career strategist. Analyze this resume and identify the most distinct and credible positioning angles for this candidate's job search. Determine the right number of angles (2, 3, or 4) based on the breadth of the candidate's experience. Each angle should target a genuinely different market.
 
 Resume:
 ${resumeText}
 
 Rules:
-- All 3 angles must target different role types and companies
+- Each angle must target different role types and companies
 - Every angle must be credible from actual resume experience
 - Include at least one slightly aspirational angle
 - If the candidate is a strong generalist, one version should reflect that
 - Never invent experience not present in the resume
+- Labels should reflect the candidate's actual field (e.g. a chef gets culinary labels, a lawyer gets legal labels, an engineer gets technical labels)
 
 Return ONLY valid JSON:
 {
   "versions": [
     {
-      "label": "<short name e.g. Enterprise Platform>",
+      "label": "<short descriptive name derived from the candidate's actual background>",
       "targetRoles": ["<role 1>", "<role 2>"],
       "targetCompanies": ["<co 1>", "<co 2>", "<co 3>"],
       "coreStrength": "<one sentence — what makes this angle credible>",
