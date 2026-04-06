@@ -109,6 +109,7 @@ USER PREFERENCES:
 - Target comp: $${prefs?.minSalary ? Math.round(prefs.minSalary/1000)+"K+" : "not set"}
 - Employment type: ${prefs?.employmentType||"Full-time"}
 - Work mode: ${prefs?.workMode||"Any"}
+- Important perks: ${(prefs?.importantPerks||[]).join(', ')||'none'}
 
 JOB DESCRIPTION:
 ${jd?.slice(0,2000)}
@@ -131,6 +132,8 @@ Return ONLY valid JSON (no markdown, no fences):
   "nextAction": "<specific single next step>",
   "resumeRecommendation": {"version":"<AI|Growth|Enterprise|General|Healthcare>","reason":"<one sentence>"},
   "estimatedCompRange": "<$X - $Y or null if unknown — estimate compensation range based on company name, role seniority, location signals, and any salary mentions. Return null if truly unknown.>",
+  "perksFound": ["<perk found in JD>",...],
+  "perksMatch": "<Good match|Missing preferred perks|null>",
   "compWarning": <null or "estimated comp below your target">,
   "roleDNA": {
     "function":"<PM|Program Manager|Strategy|Design|Eng|Other>",
@@ -277,6 +280,7 @@ const DEFAULT_PREFS={
   excludedIndustries:[],
   excludedCities:[],
   targetIndustries:[],
+  importantPerks:[],
 };
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
@@ -435,6 +439,15 @@ function PrefsModal({prefs,onSave,onClose}){
         <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:24}}>
           {EXCLUDED.map(ind=>(
             <button key={ind} onClick={()=>setP(x=>({...x,excludedIndustries:toggle(x.excludedIndustries||[],ind)}))} style={{padding:"5px 14px",borderRadius:RADIUS.pill,border:`1.5px solid ${(p.excludedIndustries||[]).includes(ind)?T.rose:T.cream3}`,background:(p.excludedIndustries||[]).includes(ind)?"rgba(196,119,106,0.08)":"transparent",color:(p.excludedIndustries||[]).includes(ind)?T.rose:T.gray,fontSize:12,cursor:"pointer"}}>{ind}</button>
+          ))}
+        </div>
+
+        {/* Perks */}
+        <SectionLabel>Perks That Matter to Me</SectionLabel>
+        <p style={{fontSize:11,color:T.gray3,marginBottom:10}}>Soft signals only — never a hard skip</p>
+        <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:24}}>
+          {["Remote work","Unlimited PTO","401k match","Paid parental leave","Equity/stock options","Health/dental/vision","Learning budget","Flexible hours","Catered meals","Relocation assistance","Wellness stipend","Home office stipend"].map(perk=>(
+            <button key={perk} onClick={()=>setP(x=>({...x,importantPerks:toggle(x.importantPerks||[],perk)}))} style={{padding:"5px 14px",borderRadius:RADIUS.pill,border:`1.5px solid ${(p.importantPerks||[]).includes(perk)?T.forest:T.cream3}`,background:(p.importantPerks||[]).includes(perk)?"rgba(45,74,62,0.08)":"transparent",color:(p.importantPerks||[]).includes(perk)?T.forest:T.gray,fontSize:12,cursor:"pointer"}}>{perk}</button>
           ))}
         </div>
 
@@ -763,6 +776,12 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
             {result.compWarning&&(
               <div style={{marginTop:8,padding:"8px 12px",background:"rgba(184,151,90,0.08)",borderRadius:RADIUS.md,fontSize:12,color:T.gold,border:`1px solid rgba(184,151,90,0.2)`}}>
                 💰 {result.compWarning}
+              </div>
+            )}
+            {/* Perks found */}
+            {result.perksFound?.length>0&&(
+              <div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
+                {result.perksFound.map((p,i)=><span key={i} className="tag" style={{background:"rgba(139,168,136,0.1)",color:T.sage,borderColor:"rgba(139,168,136,0.2)"}}>{p}</span>)}
               </div>
             )}
           </div>
