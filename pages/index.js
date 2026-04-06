@@ -65,7 +65,7 @@ Return ONLY valid JSON (no markdown, no fences):
   "atsKeywords": ["<kw>",...],
   "tailoredSummary": "<2-3 sentence professional summary for this JD>",
   "tailoredBullets": [
-    {"bullet":"<rewritten bullet>","job":"<which role this belongs to e.g. Omnicell>","action":"<add|replace>","replaces":"<first 6 words of bullet to replace, or null if add>"},
+    {"bullet":"<rewritten bullet>","job":"<the company this role belongs to>","action":"<add|replace>","replaces":"<first 6 words of bullet to replace, or null if add>"},
     {"bullet":"<rewritten bullet>","job":"<role>","action":"<add|replace>","replaces":"<or null>"},
     {"bullet":"<rewritten bullet>","job":"<role>","action":"<add|replace>","replaces":"<or null>"}
   ],
@@ -79,12 +79,12 @@ Return ONLY valid JSON (no markdown, no fences):
   "perksMatch": "<Good match|Missing preferred perks|null>",
   "compWarning": <null or "estimated comp below your target">,
   "roleDNA": {
-    "function":"<PM|Program Manager|Strategy|Design|Eng|Other>",
-    "domain":"<Healthcare|Fintech|EdTech|AI|SaaS|Infra|Consumer|Other>",
-    "productType":"<Platform|Data|Consumer|Marketplace|Hardware|AI/ML|B2B|Other>",
-    "customer":"<B2B Enterprise|B2B SMB|B2C|B2B2C>",
-    "stage":"<Seed|Series A-B|Growth|Public|Big Tech>",
-    "seniority":"<APM|PM|Sr PM|Principal|Group PM|Director+>",
+    "function":"<the primary function of this role>",
+    "domain":"<the industry or domain of this role>",
+    "productType":"<the type of product, service, or work involved>",
+    "customer":"<who this organization primarily serves>",
+    "stage":"<organization stage or size e.g. startup, growth, enterprise, public>",
+    "seniority":"<seniority level of this role e.g. Junior, Mid, Senior, Lead, Director>",
     "workMode":"<Remote|Hybrid|Onsite>",
     "coreSkills":["<skill>",...],
     "keywords":["<ats term>",...]
@@ -94,7 +94,7 @@ Return ONLY valid JSON (no markdown, no fences):
   outreach:(resumeText,company,role,persona,channel)=>`You are an expert at high-converting professional outreach for job seekers.
 
 CANDIDATE BACKGROUND:
-${resumeText?.slice(0,1500)||"Experienced product manager"}
+${resumeText?.slice(0,1500)||"Experienced professional"}
 
 TARGET: Company: ${company} | Role: ${role} | Persona: ${persona} | Channel: ${channel}
 
@@ -103,9 +103,9 @@ Write 3 message variants. Return ONLY valid JSON:
 Rules: LinkedIn connect note max 300 chars. DM max 500 chars. Email max 150 words with subject. No fluff. One clear ask. Ground in 1-2 proof points from resume.`,
 
   contactStrategy:(company,role,resumeText)=>`You are a recruiting strategist.
-RESUME CONTEXT: ${resumeText?.slice(0,800)||"Experienced PM"} | COMPANY: ${company} | ROLE: ${role}
+RESUME CONTEXT: ${resumeText?.slice(0,800)||"Experienced professional"} | COMPANY: ${company} | ROLE: ${role}
 Return ONLY valid JSON:
-{"tiers":[{"tier":1,"persona":"Hiring Manager","titles":["Director of PM","VP Product"],"why":"Direct decision maker","channel":"LinkedIn DM"},{"tier":1,"persona":"Internal Recruiter","titles":["Technical Recruiter"],"why":"Controls screening","channel":"LinkedIn Connect"},{"tier":2,"persona":"Peer PM","titles":["Senior PM"],"why":"Can refer or give intel","channel":"LinkedIn Connect"}],"path":["<step 1>","<step 2>","<step 3>"],"orgNote":"<2 sentences about likely team structure>"}`,
+{"tiers":[{"tier":1,"persona":"Hiring Manager","titles":["<likely title 1>","<likely title 2>"],"why":"Direct decision maker","channel":"LinkedIn DM"},{"tier":1,"persona":"Internal Recruiter","titles":["<likely title 1>"],"why":"Controls screening","channel":"LinkedIn Connect"},{"tier":2,"persona":"Peer in Role","titles":["<likely title 1>","<likely title 2>"],"why":"Can refer or give intel","channel":"LinkedIn Connect"}],"path":["<step 1>","<step 2>","<step 3>"],"orgNote":"<2 sentences about likely team structure>"}`,
 
   nextActions:(jobs,contacts,profile)=>`You are a job search coach. Analyze the pipeline and tell the user exactly what to do next.
 PIPELINE: ${JSON.stringify(jobs?.slice(0,10).map(j=>({company:j.company,role:j.role,status:j.status,fitScore:j.fitScore,dateAdded:j.dateAdded})))}
@@ -348,7 +348,7 @@ export default function Aster(){
 function PrefsModal({prefs,onSave,onClose}){
   const [p,setP]=useState({...DEFAULT_PREFS,...prefs});
   const [showInferBanner,setShowInferBanner]=useState(!!prefs.prefsInferred);
-  const INDUSTRIES=["Healthcare","AI/ML","Fintech","EdTech","SaaS","Consumer","Data/Analytics","Enterprise Software","Other"];
+  const INDUSTRIES=["Healthcare","Technology","Finance","Legal","Education","Retail & Commerce","Hospitality & Food","Manufacturing","Construction","Government & Nonprofit","Media & Entertainment","Transportation & Logistics","Real Estate","Energy & Utilities","Other"];
   const EXCLUDED_CATEGORIES=[
     {label:"Tech & Engineering",items:["Gaming","Cybersecurity","Networking Infrastructure","Hardware Engineering","Semiconductor","Embedded Systems","Robotics","Aerospace"]},
     {label:"Finance & Legal",items:["Payments Infrastructure","Crypto & Web3","Mortgage & Lending","Investment Banking","Hedge Funds","Insurance Underwriting","Legal & Compliance","Audit & Accounting","Tax"]},
@@ -736,11 +736,11 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
           <div>
             <label style={{fontSize:11,color:T.gray2,fontWeight:600,display:"block",marginBottom:4}}>COMPANY {extracting&&<span style={{color:T.sage,fontWeight:400}}>· detecting...</span>}</label>
-            <input className="input-base" value={company} onChange={e=>setCompany(e.target.value)} placeholder="e.g. Stripe"/>
+            <input className="input-base" value={company} onChange={e=>setCompany(e.target.value)} placeholder="e.g. Acme Corp"/>
           </div>
           <div>
             <label style={{fontSize:11,color:T.gray2,fontWeight:600,display:"block",marginBottom:4}}>ROLE {extracting&&<span style={{color:T.sage,fontWeight:400}}>· detecting...</span>}</label>
-            <input className="input-base" value={role} onChange={e=>setRole(e.target.value)} placeholder="e.g. Senior PM"/>
+            <input className="input-base" value={role} onChange={e=>setRole(e.target.value)} placeholder="e.g. Marketing Manager"/>
           </div>
         </div>
 
@@ -1247,7 +1247,7 @@ function ImportHistoryModal({onClose,setJobs,toast_}){
         </div>
         {tab==="csv"&&(
           <div>
-            <textarea className="input-base" rows={8} value={csv} onChange={e=>setCsv(e.target.value)} placeholder={"Company,Role,Date Applied,Outcome,Notes\nStripe,Senior PM,2025-01-15,No Response,Applied via website"} style={{resize:"vertical",lineHeight:1.6,marginBottom:12,fontFamily:"'DM Mono',monospace",fontSize:12}}/>
+            <textarea className="input-base" rows={8} value={csv} onChange={e=>setCsv(e.target.value)} placeholder={"Company,Role,Date Applied,Outcome,Notes\nAcme Corp,Marketing Manager,2025-01-15,No Response,Applied online"} style={{resize:"vertical",lineHeight:1.6,marginBottom:12,fontFamily:"'DM Mono',monospace",fontSize:12}}/>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
               <button className="btn-ghost" onClick={parseCSV} style={{fontSize:12}}>Parse</button>
               {parsed.length>0&&<><span style={{fontSize:12,color:T.sage,fontWeight:600}}>{parsed.length} jobs parsed</span><button className="btn-primary" onClick={importCSV} style={{fontSize:12,padding:"8px 18px"}}>Import {parsed.length} jobs</button></>}
@@ -1277,7 +1277,7 @@ function ImportHistoryModal({onClose,setJobs,toast_}){
         )}
         {tab==="bulk"&&(
           <div>
-            <textarea className="input-base" rows={8} value={bulkPaste} onChange={e=>setBulkPaste(e.target.value)} placeholder={"Company | Role | Status | Date\nStripe | Senior PM | Applied | 2025-01-15\nNotion | Product Manager | Rejected | 2025-02-01"} style={{resize:"vertical",lineHeight:1.6,marginBottom:12,fontFamily:"'DM Mono',monospace",fontSize:12}}/>
+            <textarea className="input-base" rows={8} value={bulkPaste} onChange={e=>setBulkPaste(e.target.value)} placeholder={"Company | Role | Status | Date\nAcme Corp | Marketing Manager | Applied | 2025-01-15\nGlobal Inc | Software Engineer | Rejected | 2025-02-01"} style={{resize:"vertical",lineHeight:1.6,marginBottom:12,fontFamily:"'DM Mono',monospace",fontSize:12}}/>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
               <button className="btn-ghost" onClick={parseBulk} style={{fontSize:12}}>Parse</button>
               {bulkParsed.length>0&&<><span style={{fontSize:12,color:T.sage,fontWeight:600}}>{bulkParsed.length} jobs parsed</span><button className="btn-primary" onClick={importBulk} style={{fontSize:12,padding:"8px 18px"}}>Import {bulkParsed.length} jobs</button></>}
@@ -1341,7 +1341,7 @@ Return ONLY valid JSON:
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:20}}>
         <div className="card" style={{padding:"20px"}}>
           <SectionLabel>Target role in 90 days</SectionLabel>
-          <input className="input-base" value={targetRole} onChange={e=>{setTargetRole(e.target.value);saveField("aster_target_role",e.target.value);}} placeholder="e.g. Senior PM at a Series B SaaS company"/>
+          <input className="input-base" value={targetRole} onChange={e=>{setTargetRole(e.target.value);saveField("aster_target_role",e.target.value);}} placeholder="e.g. Senior role at a growing company"/>
         </div>
         <div className="card" style={{padding:"20px"}}>
           <SectionLabel>What's been working</SectionLabel>
@@ -1425,7 +1425,7 @@ Return ONLY valid JSON:
     if(!jdSnippet.trim()||!versions)return;
     setRecLoading(true);
     try{
-      const prompt=`Given these 3 resume versions: ${JSON.stringify(versions.versions)} and this JD snippet: ${jdSnippet}, which version should I use and why? Return ONLY valid JSON: {"recommended": "<label>", "reason": "<one sentence>"}`;
+      const prompt=`Given these resume versions: ${JSON.stringify(versions.versions)} and this JD snippet: ${jdSnippet}, which version should I use and why? Return ONLY valid JSON: {"recommended": "<label>", "reason": "<one sentence>"}`;
       const result=await callClaude(prompt,200);
       setRecommendation(result);
     }catch{toast_("Recommendation failed","err");}
@@ -1435,7 +1435,7 @@ Return ONLY valid JSON:
   return(
     <div className="fade-up">
       <div style={{fontFamily:"'Playfair Display',serif",fontSize:26,fontWeight:600,color:T.charcoal,marginBottom:4}}>Resume Workshop</div>
-      <p style={{fontSize:14,color:T.gray,marginBottom:20,lineHeight:1.6}}>Aster analyzes your background and identifies your 3 strongest positioning angles.</p>
+      <p style={{fontSize:14,color:T.gray,marginBottom:20,lineHeight:1.6}}>Aster analyzes your background and identifies your strongest positioning angles.</p>
       <button className="btn-primary" onClick={analyze} disabled={loading} style={{marginBottom:20}}>{loading?<span style={{display:"flex",alignItems:"center",gap:8}}><Spinner/>Analyzing...</span>:"Analyze My Resume"}</button>
       {versions?.versions&&(
         <>
