@@ -1,0 +1,28 @@
+{
+  "versions": [
+    {
+      "label": "Platform Engineering",
+      "targetRoles": ["Sr PM, Platform", "Staff PM, Infrastructure"],
+      "targetCompanies": ["Stripe", "Datadog", "Cloudflare"],
+      "coreStrength": "Built and scaled API platforms serving 10K+ developers",
+      "leadWith": ["Stripe API platform launch", "Developer experience metrics"],
+      "deemphasize": ["Consumer growth work"]
+    },
+    {
+      "label": "AI Product",
+      "targetRoles": ["PM, AI/ML", "Sr PM, Applied AI"],
+      "targetCompanies": ["Anthropic", "OpenAI", "Cohere"],
+      "coreStrength": "Shipped ML-powered features with measurable business impact",
+      "leadWith": ["ML model integration at Airbnb", "A/B testing infrastructure"],
+      "deemphasize": ["Healthcare domain work"]
+    },
+    {
+      "label": "Growth & Lifecycle",
+      "targetRoles": ["PM, Growth", "Sr PM, Lifecycle"],
+      "targetCompanies": ["Notion", "Figma", "Linear"],
+      "coreStrength": "Drove 40% activation improvement through experimentation",
+      "leadWith": ["Airbnb guest activation", "Lifecycle email optimization"],
+      "deemphasize": ["Enterprise platform work"]
+    }
+  ]
+}

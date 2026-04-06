@@ -1,0 +1,9 @@
+{
+  "tiers": [
+    {"tier":1,"persona":"Hiring Manager","titles":["Director of Engineering","VP Engineering"],"why":"Direct decision maker","channel":"LinkedIn DM"},
+    {"tier":1,"persona":"Internal Recruiter","titles":["Technical Recruiter"],"why":"Controls screening","channel":"LinkedIn Connect"},
+    {"tier":2,"persona":"Team Lead","titles":["Staff Engineer"],"why":"Can refer or give intel","channel":"LinkedIn Connect"}
+  ],
+  "path": ["Find hiring manager on LinkedIn","Send connect note with proof point","Follow up after 3 days"],
+  "orgNote": "Engineering org likely reports to VP Eng. Team size ~15-20."
+}

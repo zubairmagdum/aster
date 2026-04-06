@@ -1,0 +1,11 @@
+{
+  "inferredTargetIndustries": ["Technology", "Finance"],
+  "inferredExcludedIndustries": ["Gaming", "Defense & Military"],
+  "inferredMinSalary": 175000,
+  "inferredMaxSalary": 250000,
+  "cannotMeetRequirements": [],
+  "seniorityLevel": "Senior",
+  "workMode": "Remote",
+  "confidence": "high",
+  "summary": "Senior product manager with 7 years in platform and growth roles at Stripe and Airbnb"
+}

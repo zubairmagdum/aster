@@ -1,0 +1,11 @@
+{
+  "variants": [
+    {"label":"Proof-led","message":"Hi, I noticed Acme is scaling its platform team. I led a similar buildout at Stripe where we grew API adoption 3x in 12 months. Would love to chat about how I could help.","hook":"scaling platform team"},
+    {"label":"Question-led","message":"Hi, curious how Acme thinks about developer experience for its API platform. I spent 4 years in this space at Stripe and have some ideas I would love to share.","hook":"API developer experience"},
+    {"label":"Value-led","message":"Hi, I helped scale Stripe's API platform from 2K to 10K active developers. I see Acme is tackling similar challenges and would love to bring that experience to your team.","hook":"Stripe platform scale"}
+  ],
+  "followups": [
+    {"day":3,"message":"Following up on my note about the platform team. Happy to share more specifics about what worked at Stripe if helpful."},
+    {"day":7,"message":"Last note — would love to chat about the platform role. Either way, wishing Acme well on the build."}
+  ]
+}

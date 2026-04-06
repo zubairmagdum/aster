@@ -1,0 +1,9 @@
+{
+  "todayTasks": [
+    {"priority":1,"task":"Follow up with Oscar Health recruiter","company":"Oscar Health","type":"follow-up"},
+    {"priority":2,"task":"Research Anthropic's API product strategy","company":"Anthropic","type":"research"}
+  ],
+  "insight": "Your strongest pipeline opportunity is Anthropic — prioritize prep for that application",
+  "warning": null,
+  "weeklyFocus": "Close the Oscar Health lead and submit Anthropic application"
+}

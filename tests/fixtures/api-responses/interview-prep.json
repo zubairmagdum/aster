@@ -1,0 +1,14 @@
+{
+  "questions": [
+    {"question":"Tell me about a time you launched a product from zero to one.","starStory":"At Stripe, I led the launch of the Connect Express onboarding flow, taking it from concept to GA in 4 months with 2K merchants onboarded in the first quarter."},
+    {"question":"How do you prioritize when you have competing stakeholder demands?","starStory":"At Airbnb, I managed competing requests from growth and trust teams by building a shared scoring framework that weighted user impact, revenue, and regulatory risk."},
+    {"question":"Describe a technical decision you made that had significant business impact.","starStory":"I chose to rebuild the API rate limiter at Stripe from a fixed-window to a sliding-window design, reducing false-positive blocks by 60% and unlocking $2M in previously throttled transactions."},
+    {"question":"How do you work with engineering teams on technical trade-offs?","starStory":"At Airbnb, I facilitated a build-vs-buy decision for our experimentation platform by creating a decision matrix with eng leads and presenting data to VP Eng."},
+    {"question":"What metrics would you use to measure success for this product?","starStory":"For the payments platform at Stripe, I established a metrics hierarchy: API uptime (99.99%), developer activation (time-to-first-call), and monthly active integrations."}
+  ],
+  "research": [
+    "Review Acme's recent product launches and blog posts",
+    "Understand their competitive positioning vs. alternatives",
+    "Research the hiring manager's background and past companies"
+  ]
+}

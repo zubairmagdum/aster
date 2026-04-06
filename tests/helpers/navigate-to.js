@@ -9,6 +9,6 @@ export async function navigateTo(page, viewName) {
   };
   const label = navLabels[viewName];
   if (!label) throw new Error(`Unknown view: ${viewName}`);
-  await page.getByRole('button', { name: label }).click();
+  await page.getByRole('button', { name: label, exact: true }).click();
   await page.waitForTimeout(300);
 }

@@ -1,0 +1,22 @@
+{
+  "aster_onboarded": true,
+  "aster_resume": "",
+  "aster_resume_name": "",
+  "aster_jobs": [],
+  "aster_contacts": [],
+  "aster_profile": {},
+  "aster_prefs": {
+    "minSalary": 0,
+    "workMode": "Any",
+    "employmentType": "Full-time",
+    "seniorityTarget": "",
+    "cannotMeetRequirements": [],
+    "excludedIndustries": [],
+    "excludedCities": [],
+    "targetIndustries": [],
+    "importantPerks": [],
+    "customExclusions": "",
+    "customTargetIndustries": ""
+  },
+  "aster_email": ""
+}
