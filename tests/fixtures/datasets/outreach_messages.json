@@ -1,0 +1,18 @@
+[
+  {
+    "messageId": "out_001",
+    "company": "Northstar Health",
+    "recipientType": "Recruiter",
+    "channel": "LinkedIn",
+    "status": "draft",
+    "message": "Hi Sarah \u2014 I recently applied for the Senior Product Manager, AI Workflow Platform role..."
+  },
+  {
+    "messageId": "out_002",
+    "company": "MetricLoop",
+    "recipientType": "Hiring Manager",
+    "channel": "Email",
+    "status": "sent",
+    "message": "I\u2019m reaching out because the Product Analyst, Growth role aligns closely with my experimentation and analytics background."
+  }
+]

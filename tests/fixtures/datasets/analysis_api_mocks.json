@@ -1,0 +1,59 @@
+{
+  "success_strong_fit": {
+    "matchScore": 91,
+    "fitSummary": "Strong fit based on product strategy, AI product work, and enterprise SaaS background.",
+    "gaps": [
+      "Healthcare domain depth could be stronger"
+    ],
+    "tailoredBulletSuggestions": [
+      "Led AI-powered workflow roadmap that improved activation by 24%.",
+      "Partnered with engineering and GTM to ship enterprise features across multiple customer segments."
+    ],
+    "outreachAngle": "Highlight AI workflow ownership and enterprise stakeholder influence.",
+    "risks": []
+  },
+  "success_mid_fit": {
+    "matchScore": 67,
+    "fitSummary": "Reasonable fit but missing depth in healthcare and direct platform ownership.",
+    "gaps": [
+      "Healthcare domain",
+      "Pricing experience"
+    ],
+    "tailoredBulletSuggestions": [
+      "Emphasize experimentation, SQL fluency, and KPI reporting.",
+      "Quantify stakeholder-facing analysis work."
+    ],
+    "outreachAngle": "Position as analytical growth operator with fast ramp potential.",
+    "risks": [
+      "May be screened out for domain mismatch"
+    ]
+  },
+  "success_low_fit": {
+    "matchScore": 34,
+    "fitSummary": "Weak fit due to seniority mismatch and missing core requirements.",
+    "gaps": [
+      "Leadership",
+      "Platform strategy",
+      "Direct management"
+    ],
+    "tailoredBulletSuggestions": [],
+    "outreachAngle": "Only pursue if strong referral exists.",
+    "risks": [
+      "Likely auto-rejected"
+    ]
+  },
+  "partial_json": {
+    "matchScore": 82,
+    "fitSummary": "Partial response missing expected arrays"
+  },
+  "malformed_json_string": "{\"matchScore\": 77, \"fitSummary\": \"Looks decent\", \"gaps\": [\"SQL\", }",
+  "api_500_error": {
+    "error": "Internal server error",
+    "status": 500
+  },
+  "api_timeout": {
+    "error": "Gateway timeout",
+    "status": 504
+  },
+  "empty_response": {}
+}

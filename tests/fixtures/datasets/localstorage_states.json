@@ -1,0 +1,31 @@
+{
+  "empty_state": {},
+  "fresh_onboarding": {
+    "aster:onboardingComplete": false,
+    "aster:userProfile": "",
+    "aster:jobs": "[]"
+  },
+  "completed_onboarding_no_jobs": {
+    "aster:onboardingComplete": true,
+    "aster:userProfile": "{\"profileId\": \"cand_001\", \"fullName\": \"Amina Rahman\", \"email\": \"amina.rahman@example.com\", \"phone\": \"(555) 201-1101\", \"location\": \"Dallas, TX\", \"targetRoles\": [\"Senior Product Manager\", \"Staff Product Manager\"], \"yearsExperience\": 9, \"workAuthorization\": \"US Citizen\", \"remotePreference\": \"Remote or hybrid\", \"skills\": [\"Product strategy\", \"B2B SaaS\", \"SQL\", \"Roadmapping\", \"User research\", \"AI products\"], \"resumeText\": \"Senior Product Manager with 9 years of experience in B2B SaaS, analytics, and AI-enabled workflows. Led cross-functional teams, launched enterprise features, improved activation by 24%, reduced churn by 11%.\", \"linkedinUrl\": \"https://linkedin.com/in/amina-rahman-pm\", \"salaryMin\": 175000, \"salaryMax\": 205000}",
+    "aster:jobs": "[]",
+    "aster:preferences": "{\"theme\": \"light\", \"sort\": \"fit_desc\"}"
+  },
+  "completed_onboarding_with_jobs": {
+    "aster:onboardingComplete": true,
+    "aster:userProfile": "{\"profileId\": \"cand_001\", \"fullName\": \"Amina Rahman\", \"email\": \"amina.rahman@example.com\", \"phone\": \"(555) 201-1101\", \"location\": \"Dallas, TX\", \"targetRoles\": [\"Senior Product Manager\", \"Staff Product Manager\"], \"yearsExperience\": 9, \"workAuthorization\": \"US Citizen\", \"remotePreference\": \"Remote or hybrid\", \"skills\": [\"Product strategy\", \"B2B SaaS\", \"SQL\", \"Roadmapping\", \"User research\", \"AI products\"], \"resumeText\": \"Senior Product Manager with 9 years of experience in B2B SaaS, analytics, and AI-enabled workflows. Led cross-functional teams, launched enterprise features, improved activation by 24%, reduced churn by 11%.\", \"linkedinUrl\": \"https://linkedin.com/in/amina-rahman-pm\", \"salaryMin\": 175000, \"salaryMax\": 205000}",
+    "aster:jobs": "[{\"jobId\": \"job_001\", \"company\": \"Northstar Health\", \"title\": \"Senior Product Manager, AI Workflow Platform\", \"location\": \"Remote\", \"employmentType\": \"Full-time\", \"salaryMin\": 180000, \"salaryMax\": 210000, \"postedDaysAgo\": 2, \"mustHaveSkills\": [\"AI products\", \"B2B SaaS\", \"Analytics\", \"Product strategy\"], \"niceToHaveSkills\": [\"Healthcare\", \"SQL\", \"Enterprise integrations\"], \"description\": \"Lead product strategy for an AI-assisted workflow platform used by operations teams. Partner with design, engineering, and go-to-market to ship high-impact features.\", \"seniority\": \"Senior\", \"visaSponsorship\": false}, {\"jobId\": \"job_002\", \"company\": \"MetricLoop\", \"title\": \"Product Analyst, Growth\", \"location\": \"Austin, TX\", \"employmentType\": \"Full-time\", \"salaryMin\": 95000, \"salaryMax\": 115000, \"postedDaysAgo\": 8, \"mustHaveSkills\": [\"SQL\", \"A/B testing\", \"Analytics\", \"Excel\"], \"niceToHaveSkills\": [\"Python\", \"Amplitude\", \"Stakeholder communication\"], \"description\": \"Support growth initiatives through measurement, experimentation, and dashboarding. Own weekly reporting and insight generation.\", \"seniority\": \"Mid\", \"visaSponsorship\": true}, {\"jobId\": \"job_003\", \"company\": \"Titan Cloud\", \"title\": \"Director of Product Management, Platform\", \"location\": \"New York, NY\", \"employmentType\": \"Full-time\", \"salaryMin\": 230000, \"salaryMax\": 290000, \"postedDaysAgo\": 14, \"mustHaveSkills\": [\"People management\", \"Platform strategy\", \"Enterprise SaaS\", \"Roadmapping\"], \"niceToHaveSkills\": [\"Pricing\", \"Healthcare\", \"Security\"], \"description\": \"Lead a team of PMs building a multi-tenant platform. Set strategic direction, develop leaders, and align product investments to company goals.\", \"seniority\": \"Director\", \"visaSponsorship\": false}]",
+    "aster:preferences": "{\"theme\": \"light\", \"sort\": \"fit_desc\"}",
+    "aster:lastAnalysis": "{\"matchScore\": 91, \"fitSummary\": \"Strong fit based on product strategy, AI product work, and enterprise SaaS background.\", \"gaps\": [\"Healthcare domain depth could be stronger\"], \"tailoredBulletSuggestions\": [\"Led AI-powered workflow roadmap that improved activation by 24%.\", \"Partnered with engineering and GTM to ship enterprise features across multiple customer segments.\"], \"outreachAngle\": \"Highlight AI workflow ownership and enterprise stakeholder influence.\", \"risks\": []}"
+  },
+  "corrupt_json_profile": {
+    "aster:onboardingComplete": true,
+    "aster:userProfile": "{\"fullName\":\"Broken User\",",
+    "aster:jobs": "[]"
+  },
+  "wrong_type_jobs": {
+    "aster:onboardingComplete": true,
+    "aster:userProfile": "{\"profileId\": \"cand_002\", \"fullName\": \"David Kim\", \"email\": \"david.kim@example.com\", \"phone\": \"(555) 201-1102\", \"location\": \"Austin, TX\", \"targetRoles\": [\"Product Analyst\", \"Growth Analyst\"], \"yearsExperience\": 3, \"workAuthorization\": \"H1B Transfer Required\", \"remotePreference\": \"Hybrid only\", \"skills\": [\"Excel\", \"SQL\", \"Python\", \"A/B testing\", \"Dashboards\"], \"resumeText\": \"Product analyst with 3 years of experience in marketplace analytics, retention analysis, experimentation, and KPI reporting. Built dashboards and supported growth experiments.\", \"linkedinUrl\": \"https://linkedin.com/in/david-kim-analytics\", \"salaryMin\": 90000, \"salaryMax\": 120000}",
+    "aster:jobs": "{\"not\":\"an array\"}"
+  }
+}

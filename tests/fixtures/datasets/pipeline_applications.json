@@ -1,0 +1,26 @@
+[
+  {
+    "applicationId": "app_001",
+    "jobId": "job_001",
+    "stage": "applied",
+    "date": "2026-04-01",
+    "notes": "Applied via company site",
+    "nextAction": "Send recruiter outreach"
+  },
+  {
+    "applicationId": "app_002",
+    "jobId": "job_002",
+    "stage": "screen",
+    "date": "2026-04-03",
+    "notes": "Recruiter screen scheduled",
+    "nextAction": "Prepare metrics stories"
+  },
+  {
+    "applicationId": "app_003",
+    "jobId": "job_003",
+    "stage": "rejected",
+    "date": "2026-03-27",
+    "notes": "Likely seniority mismatch",
+    "nextAction": "Archive"
+  }
+]

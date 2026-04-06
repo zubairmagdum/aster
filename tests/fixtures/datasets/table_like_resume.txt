@@ -1,0 +1,3 @@
+EMPLOYMENT | COMPANY | YEARS
+PM | Acme | 2021-2024
+Analyst | Beta | 2019-2021

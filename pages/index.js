@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { T, STATUS_CFG, STATUSES, DEFAULT_PREFS, getWeekKey, checkHardSkip, updateProfile, matchScore, topProfileTags } from "../lib/utils";
+import { T, STATUS_CFG, STATUSES, DEFAULT_PREFS, getWeekKey, checkHardSkip, updateProfile, matchScore, topProfileTags, parseCSVData, parseBulkData } from "../lib/utils";
 const RADIUS={sm:8,md:14,lg:20,xl:28,pill:999};
 const SHADOW={sm:"0 1px 4px rgba(28,28,28,0.06)",md:"0 4px 16px rgba(28,28,28,0.08)",lg:"0 8px 32px rgba(28,28,28,0.1)",xl:"0 16px 56px rgba(28,28,28,0.12)"};
 
@@ -1177,19 +1177,8 @@ function ImportHistoryModal({onClose,setJobs,toast_}){
   const [bulkPaste,setBulkPaste]=useState("");
   const [bulkParsed,setBulkParsed]=useState([]);
 
-  const outcomeMap={"rejected":"Rejected","no response":"Applied","screen":"Recruiter Screen","interview":"HM Interview","offer":"Offer","applied":"Applied"};
-
   const parseCSV=()=>{
-    const lines=csv.trim().split("\n").filter(l=>l.trim());
-    const dataLines=lines.filter(l=>!l.toLowerCase().startsWith("company,"));
-    const data=dataLines.map(line=>{
-      const parts=line.split(",").map(s=>s.trim());
-      const [company,role,date,outcome,notes]=parts;
-      if(!company||!role)return null;
-      const status=outcomeMap[(outcome||"").toLowerCase()]||"Applied";
-      return{company,role,dateAdded:date||new Date().toISOString().split("T")[0],status,notes:notes||""};
-    }).filter(Boolean);
-    setParsed(data);
+    setParsed(parseCSVData(csv));
   };
 
   const importCSV=()=>{
@@ -1213,15 +1202,7 @@ function ImportHistoryModal({onClose,setJobs,toast_}){
   };
 
   const parseBulk=()=>{
-    const lines=bulkPaste.trim().split("\n").filter(l=>l.trim());
-    const data=lines.map(line=>{
-      const parts=line.split("|").map(s=>s.trim());
-      const [company,role,status,date]=parts;
-      if(!company||!role)return null;
-      const matchedStatus=STATUSES.find(s=>s.toLowerCase()===((status||"").toLowerCase()))||"Applied";
-      return{company,role,status:matchedStatus,dateAdded:date||new Date().toISOString().split("T")[0]};
-    }).filter(Boolean);
-    setBulkParsed(data);
+    setBulkParsed(parseBulkData(bulkPaste));
   };
 
   const importBulk=()=>{

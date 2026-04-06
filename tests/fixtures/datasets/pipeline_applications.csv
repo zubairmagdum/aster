@@ -1,0 +1,4 @@
+applicationId,jobId,stage,date,notes,nextAction
+app_001,job_001,applied,2026-04-01,Applied via company site,Send recruiter outreach
+app_002,job_002,screen,2026-04-03,Recruiter screen scheduled,Prepare metrics stories
+app_003,job_003,rejected,2026-03-27,Likely seniority mismatch,Archive

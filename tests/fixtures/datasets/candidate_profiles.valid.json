@@ -1,0 +1,78 @@
+[
+  {
+    "profileId": "cand_001",
+    "fullName": "Amina Rahman",
+    "email": "amina.rahman@example.com",
+    "phone": "(555) 201-1101",
+    "location": "Dallas, TX",
+    "targetRoles": [
+      "Senior Product Manager",
+      "Staff Product Manager"
+    ],
+    "yearsExperience": 9,
+    "workAuthorization": "US Citizen",
+    "remotePreference": "Remote or hybrid",
+    "skills": [
+      "Product strategy",
+      "B2B SaaS",
+      "SQL",
+      "Roadmapping",
+      "User research",
+      "AI products"
+    ],
+    "resumeText": "Senior Product Manager with 9 years of experience in B2B SaaS, analytics, and AI-enabled workflows. Led cross-functional teams, launched enterprise features, improved activation by 24%, reduced churn by 11%.",
+    "linkedinUrl": "https://linkedin.com/in/amina-rahman-pm",
+    "salaryMin": 175000,
+    "salaryMax": 205000
+  },
+  {
+    "profileId": "cand_002",
+    "fullName": "David Kim",
+    "email": "david.kim@example.com",
+    "phone": "(555) 201-1102",
+    "location": "Austin, TX",
+    "targetRoles": [
+      "Product Analyst",
+      "Growth Analyst"
+    ],
+    "yearsExperience": 3,
+    "workAuthorization": "H1B Transfer Required",
+    "remotePreference": "Hybrid only",
+    "skills": [
+      "Excel",
+      "SQL",
+      "Python",
+      "A/B testing",
+      "Dashboards"
+    ],
+    "resumeText": "Product analyst with 3 years of experience in marketplace analytics, retention analysis, experimentation, and KPI reporting. Built dashboards and supported growth experiments.",
+    "linkedinUrl": "https://linkedin.com/in/david-kim-analytics",
+    "salaryMin": 90000,
+    "salaryMax": 120000
+  },
+  {
+    "profileId": "cand_003",
+    "fullName": "Priya Sethi",
+    "email": "priya.sethi@example.com",
+    "phone": "(555) 201-1103",
+    "location": "New York, NY",
+    "targetRoles": [
+      "Director of Product",
+      "Group Product Manager"
+    ],
+    "yearsExperience": 12,
+    "workAuthorization": "Permanent Resident",
+    "remotePreference": "Remote only",
+    "skills": [
+      "People management",
+      "Pricing",
+      "Platform strategy",
+      "Healthcare",
+      "Enterprise sales support"
+    ],
+    "resumeText": "Director-level product leader with 12 years across healthtech and enterprise software. Managed PM teams, drove pricing programs, and partnered with sales on strategic accounts.",
+    "linkedinUrl": "https://linkedin.com/in/priya-sethi-product",
+    "salaryMin": 220000,
+    "salaryMax": 280000
+  }
+]

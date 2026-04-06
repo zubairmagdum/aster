@@ -1,0 +1,95 @@
+[
+  {
+    "jobId": "job_001",
+    "company": "Northstar Health",
+    "title": "Senior Product Manager, AI Workflow Platform",
+    "location": "Remote",
+    "employmentType": "Full-time",
+    "salaryMin": 180000,
+    "salaryMax": 210000,
+    "postedDaysAgo": 2,
+    "mustHaveSkills": [
+      "AI products",
+      "B2B SaaS",
+      "Analytics",
+      "Product strategy"
+    ],
+    "niceToHaveSkills": [
+      "Healthcare",
+      "SQL",
+      "Enterprise integrations"
+    ],
+    "description": "Lead product strategy for an AI-assisted workflow platform used by operations teams. Partner with design, engineering, and go-to-market to ship high-impact features.",
+    "seniority": "Senior",
+    "visaSponsorship": false
+  },
+  {
+    "jobId": "job_002",
+    "company": "MetricLoop",
+    "title": "Product Analyst, Growth",
+    "location": "Austin, TX",
+    "employmentType": "Full-time",
+    "salaryMin": 95000,
+    "salaryMax": 115000,
+    "postedDaysAgo": 8,
+    "mustHaveSkills": [
+      "SQL",
+      "A/B testing",
+      "Analytics",
+      "Excel"
+    ],
+    "niceToHaveSkills": [
+      "Python",
+      "Amplitude",
+      "Stakeholder communication"
+    ],
+    "description": "Support growth initiatives through measurement, experimentation, and dashboarding. Own weekly reporting and insight generation.",
+    "seniority": "Mid",
+    "visaSponsorship": true
+  },
+  {
+    "jobId": "job_003",
+    "company": "Titan Cloud",
+    "title": "Director of Product Management, Platform",
+    "location": "New York, NY",
+    "employmentType": "Full-time",
+    "salaryMin": 230000,
+    "salaryMax": 290000,
+    "postedDaysAgo": 14,
+    "mustHaveSkills": [
+      "People management",
+      "Platform strategy",
+      "Enterprise SaaS",
+      "Roadmapping"
+    ],
+    "niceToHaveSkills": [
+      "Pricing",
+      "Healthcare",
+      "Security"
+    ],
+    "description": "Lead a team of PMs building a multi-tenant platform. Set strategic direction, develop leaders, and align product investments to company goals.",
+    "seniority": "Director",
+    "visaSponsorship": false
+  },
+  {
+    "jobId": "job_004",
+    "company": "Quiet Forge",
+    "title": "Junior Product Manager",
+    "location": "Remote",
+    "employmentType": "Contract",
+    "salaryMin": 55000,
+    "salaryMax": 70000,
+    "postedDaysAgo": 1,
+    "mustHaveSkills": [
+      "Communication",
+      "Organization"
+    ],
+    "niceToHaveSkills": [
+      "Notion",
+      "Jira"
+    ],
+    "description": "Assist with backlog maintenance and stakeholder communication.",
+    "seniority": "Junior",
+    "visaSponsorship": false
+  }
+]
