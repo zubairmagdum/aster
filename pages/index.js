@@ -49,15 +49,16 @@ function checkHardSkip(jdText, prefs) {
     defense: ["defense contractor","department of defense","dod","classified","security clearance","government contractor"],
     networking: ["network engineer","cisco","network infrastructure","routing and switching","firewall engineer"],
     payments: ["payments infrastructure","card processing","acquiring bank","payment rails","issuer processing"],
-    lms: ["lms","learning management system","docebo","canvas lms","moodle","blackboard","cornerstone ondemand","student information system","sis platform"],
-    legal: ["legal workflows","contract lifecycle","clm platform","legal tech","paralegal","attorney","bar passage","juris doctor"],
-    audit: ["cpa certification","cpa required","audit engagement","public accounting","big four","assurance practice","sox compliance auditor"],
-    orthopedic: ["orthopedic","surgical instruments","medical device sales","cadaveric","implant","spine surgery","trauma plating"],
-    travel: ["corporate travel","travel management company","tmc","gds platform","sabre","amadeus","travel booking engine"],
-    hrtech: ["hris","workday hcm","human capital management","payroll processing","benefits administration","adp workforce","ceridian dayforce"],
-    adtech: ["demand side platform","dsp","programmatic advertising","web tagging","tag management","pixel implementation","attribution modeling","rewarded ads"],
-    mortgage: ["mortgage origination","loan servicing","underwriting","fannie mae","freddie mac","heloc","home equity loan platform"],
-    studentinfo: ["student information system","sis","enrollment management","financial aid processing","powerschool","ellucian"],
+    lms: ["lms","learning management system","docebo","canvas lms","moodle","blackboard","student information system"],
+    audit: ["cpa certification","cpa required","audit engagement","public accounting","big four","sox compliance auditor"],
+    orthopedic: ["orthopedic","surgical instruments","medical device","cadaveric","implant","spine surgery"],
+    travel: ["corporate travel","travel management company","tmc","gds platform","sabre","amadeus"],
+    hrtech: ["hris","workday hcm","human capital management","payroll processing","adp workforce","ceridian"],
+    adtech: ["demand side platform","dsp","programmatic advertising","web tagging","tag management","rewarded ads"],
+    mortgage: ["mortgage origination","loan servicing","underwriting","fannie mae","freddie mac","heloc"],
+    govtech: ["government contracting","defense intelligence","security clearance","classified","dod","federal agency"],
+    iot: ["iot","physical operations","telematics","connected devices","fleet management","field operations"],
+    martech: ["marketing automation","martech","gtm infrastructure","lead routing","salesforce marketing cloud","marketo admin"],
   };
   excludedDomains.forEach(domain => {
     const keywords = domainMap[domain] || [domain.toLowerCase()];
@@ -80,6 +81,8 @@ function checkHardSkip(jdText, prefs) {
       /people\s+manager\s+experienc/i,
       /line\s+management\s+experienc/i,
       /experience\s+managing\s+product\s+manager/i,
+      /manage\s+a\s+portfolio\s+of\s+pm/i,
+      /\d+\+?\s*direct\s+reports/i,
     ];
     if (mgmtRequired.some(r => r.test(jdText))) {
       reasons.push("Requires people management experience");
@@ -154,9 +157,9 @@ Return ONLY valid JSON (no markdown, no fences):
   "resumeRecommendation": {
     "version": "<Choose from: AI|Growth|Enterprise|Healthcare|General>",
     "reason": "<one sentence>",
-    "logic": "Use AI version for: AI-native companies, LLM products, developer tools, agentic systems, eval frameworks. Use Growth version for: B2C, lifecycle, member acquisition, activation, experimentation, PLG. Use Healthcare version for: digital health, clinical workflows, payer analytics, EHR, regulated health environments, patient engagement. Use Enterprise version for: data platforms, enterprise SaaS, 0-to-1 commercial launches, platform architecture, multi-tenant systems. Use General version for: broad roles, warm referrals, unclear domain, or when multiple versions apply equally."
+    "logic": "Use AI version for: AI-native companies, LLM products, developer tools, agentic systems, eval frameworks, AI governance, responsible AI, founding AI pod roles. Use Growth version for: B2C, lifecycle, member acquisition, activation, experimentation, PLG, CRM, onboarding optimization. Use Healthcare version for: digital health, clinical workflows, payer analytics, EHR, regulated health environments, patient engagement, health plans, value-based care, Medicaid, Medicare. Use Enterprise version for: data platforms, enterprise SaaS, 0-to-1 commercial launches, platform architecture, multi-tenant systems, infrastructure-adjacent. Use General version for: consulting firms, broad IC roles, warm referrals, unclear domain, staffing placements."
   },
-  "estimatedCompRange": "<$X - $Y or null if unknown. Use these real market data points to calibrate: AI-native startups Series B+: $180K-$294K for Sr/Principal PM. Digital health Series B-D: $122K-$225K for Sr PM. Enterprise SaaS growth stage: $155K-$245K for Sr PM. Big Tech (Airbnb, Instacart, Google): $190K-$280K+ for Sr PM. Healthcare IT / regulated: $120K-$180K for Sr PM. EdTech, nonprofit-adjacent: $110K-$160K. Staffing/consulting placements: deduct 15-20% from direct hire equivalent. If the JD mentions equity, add '+ equity' to the range. If no data available, return null.>",
+  "estimatedCompRange": "<$X - $Y or null if unknown. Use these real market benchmarks from actual job postings: AI-native startups Series B+: $180K-$294K. Digital health Series B-D: $128K-$225K. Enterprise SaaS growth: $155K-$245K. Big Tech: $190K-$280K+. Healthcare IT regulated: $120K-$180K. EdTech/nonprofit: $110K-$160K. Staffing placements: deduct 15-20%. Insurance/fintech: $150-$200K. Add equity note if mentioned. Return null if unknown.>",
   "perksFound": ["<perk found in JD>",...],
   "perksMatch": "<Good match|Missing preferred perks|null>",
   "compWarning": <null or "estimated comp below your target">,
