@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "test:contract": "vitest run tests/api/claude-contract.test.js"
   },
   "dependencies": {
     "mammoth": "^1.11.0",
