@@ -1106,6 +1106,8 @@ function ImportHistoryModal({onClose,setJobs,toast_}){
   const [csv,setCsv]=useState("");
   const [parsed,setParsed]=useState([]);
   const [manualRows,setManualRows]=useState(Array.from({length:8},()=>({company:"",role:"",status:"Applied",date:""})));
+  const [bulkPaste,setBulkPaste]=useState("");
+  const [bulkParsed,setBulkParsed]=useState([]);
 
   const outcomeMap={"rejected":"Rejected","no response":"Applied","screen":"Recruiter Screen","interview":"HM Interview","offer":"Offer","applied":"Applied"};
 
@@ -1123,6 +1125,8 @@ function ImportHistoryModal({onClose,setJobs,toast_}){
 
   const importCSV=()=>{
     const newJobs=parsed.map(j=>({...j,id:Date.now().toString()+Math.random().toString(36).slice(2,6),fitScore:null,matchScore:null,roleDNA:null,aiAnalysis:null}));
+    const existingJobs=Store.get("aster_jobs",[]);
+    Store.set("aster_jobs",[...newJobs,...existingJobs]);
     setJobs(prev=>[...newJobs,...prev]);
     toast_(`Imported ${newJobs.length} jobs to pipeline`);
     onClose();
@@ -1132,6 +1136,29 @@ function ImportHistoryModal({onClose,setJobs,toast_}){
     const filled=manualRows.filter(r=>r.company&&r.role);
     if(!filled.length)return;
     const newJobs=filled.map(r=>({company:r.company,role:r.role,status:r.status,dateAdded:r.date||new Date().toISOString().split("T")[0],id:Date.now().toString()+Math.random().toString(36).slice(2,6),fitScore:null,matchScore:null,roleDNA:null,aiAnalysis:null,notes:""}));
+    const existingJobs=Store.get("aster_jobs",[]);
+    Store.set("aster_jobs",[...newJobs,...existingJobs]);
+    setJobs(prev=>[...newJobs,...prev]);
+    toast_(`Imported ${newJobs.length} jobs to pipeline`);
+    onClose();
+  };
+
+  const parseBulk=()=>{
+    const lines=bulkPaste.trim().split("\n").filter(l=>l.trim());
+    const data=lines.map(line=>{
+      const parts=line.split("|").map(s=>s.trim());
+      const [company,role,status,date]=parts;
+      if(!company||!role)return null;
+      const matchedStatus=STATUSES.find(s=>s.toLowerCase()===((status||"").toLowerCase()))||"Applied";
+      return{company,role,status:matchedStatus,dateAdded:date||new Date().toISOString().split("T")[0]};
+    }).filter(Boolean);
+    setBulkParsed(data);
+  };
+
+  const importBulk=()=>{
+    const newJobs=bulkParsed.map(j=>({...j,id:Date.now().toString()+Math.random().toString(36).slice(2,6),fitScore:null,matchScore:null,roleDNA:null,aiAnalysis:null,notes:""}));
+    const existingJobs=Store.get("aster_jobs",[]);
+    Store.set("aster_jobs",[...newJobs,...existingJobs]);
     setJobs(prev=>[...newJobs,...prev]);
     toast_(`Imported ${newJobs.length} jobs to pipeline`);
     onClose();
@@ -1145,7 +1172,7 @@ function ImportHistoryModal({onClose,setJobs,toast_}){
         <div style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontWeight:600,color:T.charcoal,marginBottom:4}}>Import Past Applications</div>
         <p style={{fontSize:13,color:T.gray,marginBottom:20}}>Paste CSV data or use the manual entry rows below.</p>
         <div style={{display:"flex",gap:4,marginBottom:16,borderBottom:`1px solid ${T.cream2}`}}>
-          {[["csv","Paste CSV"],["manual","Manual Entry"]].map(([id,label])=>(
+          {[["csv","Paste CSV"],["manual","Manual Entry"],["bulk","Bulk Paste"]].map(([id,label])=>(
             <button key={id} onClick={()=>setTab(id)} style={{padding:"8px 16px",fontSize:12,fontWeight:500,background:"none",border:"none",cursor:"pointer",color:tab===id?T.forest:T.gray2,borderBottom:tab===id?`2px solid ${T.forest}`:"2px solid transparent",marginBottom:-1}}>{label}</button>
           ))}
         </div>
@@ -1177,6 +1204,15 @@ function ImportHistoryModal({onClose,setJobs,toast_}){
               </div>
             ))}
             <button className="btn-primary" onClick={importManual} style={{marginTop:12,fontSize:12}}>Import All Filled Rows</button>
+          </div>
+        )}
+        {tab==="bulk"&&(
+          <div>
+            <textarea className="input-base" rows={8} value={bulkPaste} onChange={e=>setBulkPaste(e.target.value)} placeholder={"Company | Role | Status | Date\nStripe | Senior PM | Applied | 2025-01-15\nNotion | Product Manager | Rejected | 2025-02-01"} style={{resize:"vertical",lineHeight:1.6,marginBottom:12,fontFamily:"'DM Mono',monospace",fontSize:12}}/>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <button className="btn-ghost" onClick={parseBulk} style={{fontSize:12}}>Parse</button>
+              {bulkParsed.length>0&&<><span style={{fontSize:12,color:T.sage,fontWeight:600}}>{bulkParsed.length} jobs parsed</span><button className="btn-primary" onClick={importBulk} style={{fontSize:12,padding:"8px 18px"}}>Import {bulkParsed.length} jobs</button></>}
+            </div>
           </div>
         )}
         <div style={{marginTop:16,textAlign:"right"}}><button className="btn-ghost" onClick={onClose}>Cancel</button></div>
