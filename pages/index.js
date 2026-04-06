@@ -44,16 +44,59 @@ function checkHardSkip(jdText, prefs) {
   // Domain exclusions
   const excludedDomains = prefs.excludedIndustries || [];
   const domainMap = {
-    gaming: ["gaming","game studio","video game","esports","game developer"],
-    cybersecurity: ["cybersecurity","cyber security","infosec","information security","soc analyst","penetration testing","zero trust"],
-    defense: ["defense contractor","department of defense","dod","classified","security clearance","government contractor"],
-    networking: ["network engineer","cisco","network infrastructure","routing and switching","firewall engineer"],
-    payments: ["payments infrastructure","card processing","acquiring bank","payment rails","issuer processing"],
-    hardware: ["hardware engineer","pcb","firmware","embedded systems","circuit design","semiconductor"],
-    crypto: ["cryptocurrency","blockchain","web3","defi","smart contract","token","nft"],
+    "Gaming": ["video game","game studio","gaming","esports","game developer","unity","unreal engine"],
+    "Cybersecurity": ["cybersecurity","cyber security","infosec","information security","soc analyst","penetration testing","zero trust","vulnerability management"],
+    "Networking Infrastructure": ["network engineer","cisco","network infrastructure","routing","switching","firewall","sdwan","bgp"],
+    "Hardware Engineering": ["hardware engineering","pcb design","fpga","asic","embedded firmware","circuit design","electrical engineering"],
+    "Semiconductor": ["semiconductor","chip design","wafer","vlsi","cadence","synopsys","fab","foundry"],
+    "Embedded Systems": ["embedded systems","rtos","bare metal","microcontroller","firmware","iot edge"],
+    "Robotics": ["robotics","ros","actuator","robotic arm","autonomous robot","warehouse robotics"],
+    "Aerospace": ["aerospace","avionics","faa certification","aircraft","spacecraft","nasa"],
+    "Payments Infrastructure": ["payment rails","card processing","acquiring bank","issuer processing","ach","nacha","payment gateway","pci dss"],
+    "Crypto & Web3": ["cryptocurrency","blockchain","web3","defi","nft","smart contract","solidity","crypto exchange"],
+    "Mortgage & Lending": ["mortgage origination","loan servicing","underwriting","fannie mae","freddie mac","heloc","home equity loan"],
+    "Investment Banking": ["investment banking","capital markets","ipo","leveraged buyout","deal structuring","bloomberg terminal"],
+    "Hedge Funds": ["hedge fund","quantitative trading","algorithmic trading","derivatives","options trading","portfolio management"],
+    "Insurance Underwriting": ["insurance underwriting","actuarial","risk modeling","reinsurance","claims adjudication"],
+    "Legal & Compliance": ["legal workflows","contract lifecycle","clm","paralegal","attorney","bar admission","juris doctor"],
+    "Audit & Accounting": ["cpa certification","cpa required","audit engagement","public accounting","big four","assurance","sox auditor"],
+    "Tax": ["tax compliance","tax software","transfer pricing","tax advisory","indirect tax"],
+    "Medical Devices": ["medical device","fda 510k","fda clearance","iso 13485","predicate device","design controls"],
+    "Pharmaceutical": ["pharmaceutical","drug development","fda approval","clinical trials","gmp","regulatory affairs","pharmacovigilance"],
+    "Clinical Research": ["clinical research","cro","irb","good clinical practice","gcp","protocol design"],
+    "Genomics & Biotech": ["genomics","crispr","sequencing","bioinformatics","proteomics","cell therapy","gene therapy"],
+    "Orthopedic & Surgical": ["orthopedic","surgical instruments","implant","spine surgery","trauma plating","cadaveric"],
+    "Radiology": ["radiology","pacs","dicom","imaging informatics","mri","ct scan"],
+    "Manufacturing": ["manufacturing","lean manufacturing","six sigma","production line","cnc","quality control","oem supplier"],
+    "Supply Chain & Logistics": ["supply chain","logistics","warehouse management","freight","last mile delivery","3pl"],
+    "Construction": ["construction","bim","project superintendent","subcontractor","building codes","civil engineering"],
+    "Oil & Gas": ["oil and gas","upstream","downstream","midstream","drilling","refinery","petroleum engineering"],
+    "Mining": ["mining","extraction","mineral processing","geology","tailings","open pit"],
+    "Agriculture": ["agriculture","agtech","precision farming","crop science","livestock","irrigation"],
+    "Utilities & Energy": ["utility","grid management","energy trading","power generation","scada","energy regulatory"],
+    "Sports & Athletics": ["sports league","athlete management","sports analytics","stadium operations","sports betting","fantasy sports"],
+    "Music & Audio": ["music production","daw","audio engineering","record label","music publishing","streaming royalties"],
+    "Film & TV Production": ["film production","post production","vfx","studio operations","content distribution","broadcast engineering"],
+    "Publishing & Editorial": ["editorial","publishing","content management","journalism","newsroom","media rights"],
+    "Advertising & Adtech": ["demand side platform","dsp","programmatic","web tagging","tag management","pixel","attribution modeling","rewarded ads"],
+    "Defense & Military": ["defense contractor","department of defense","dod","classified","security clearance","government contractor","itar"],
+    "Government & Public Sector": ["government agency","public sector","federal contract","gsa schedule","civic tech","state government"],
+    "Intelligence & National Security": ["intelligence community","national security","signals intelligence","counterterrorism","classified programs"],
+    "HR Tech & Payroll": ["hris","workday hcm","human capital management","payroll processing","benefits administration","adp","ceridian"],
+    "ERP Systems": ["erp","sap","oracle erp","netsuite","jd edwards","enterprise resource planning"],
+    "CRM & Salesforce": ["salesforce admin","salesforce developer","crm implementation","salesforce marketing cloud","dynamics crm"],
+    "LMS & EdTech Platforms": ["lms","learning management system","docebo","canvas lms","moodle","blackboard","cornerstone","scorm"],
+    "Student Information Systems": ["student information system","sis","enrollment management","financial aid","powerschool","ellucian"],
+    "Real Estate Tech": ["real estate","proptech","mls","property management","commercial real estate","cap rate"],
+    "Travel & Hospitality Tech": ["corporate travel","travel management company","tmc","gds","sabre","amadeus","hotel pms"],
+    "Automotive & Dealership": ["automotive dealership","dealer management system","dms","auto financing","vehicle inventory"],
+    "Retail & Merchandising": ["retail merchandising","planogram","store operations","wholesale buying","category management"],
+    "Food Service & Restaurant Tech": ["restaurant management","pos system","food service","kitchen operations","menu engineering","franchise operations"],
+    "Telecom & Wireless": ["telecom","wireless carrier","5g","spectrum","mvno","telecom infrastructure"],
+    "Satellite & Broadband": ["satellite","leo constellation","ground station","broadband infrastructure","isp","fiber deployment"],
   };
   excludedDomains.forEach(domain => {
-    const keywords = domainMap[domain.toLowerCase()] || [domain.toLowerCase()];
+    const keywords = domainMap[domain] || [domain.toLowerCase()];
     if (keywords.some(k => jd.includes(k))) {
       reasons.push(`Domain excluded: ${domain}`);
     }
@@ -471,7 +514,16 @@ function PrefsModal({prefs,onSave,onClose}){
   const [p,setP]=useState({...DEFAULT_PREFS,...prefs});
   const [showInferBanner,setShowInferBanner]=useState(!!prefs.prefsInferred);
   const INDUSTRIES=["Healthcare","AI/ML","Fintech","EdTech","SaaS","Consumer","Data/Analytics","Enterprise Software","Other"];
-  const EXCLUDED=["Gaming","Cybersecurity","Defense","Networking","Payments","Hardware","Crypto"];
+  const EXCLUDED_CATEGORIES=[
+    {label:"Tech & Engineering",items:["Gaming","Cybersecurity","Networking Infrastructure","Hardware Engineering","Semiconductor","Embedded Systems","Robotics","Aerospace"]},
+    {label:"Finance & Legal",items:["Payments Infrastructure","Crypto & Web3","Mortgage & Lending","Investment Banking","Hedge Funds","Insurance Underwriting","Legal & Compliance","Audit & Accounting","Tax"]},
+    {label:"Healthcare & Life Sciences",items:["Medical Devices","Pharmaceutical","Clinical Research","Genomics & Biotech","Orthopedic & Surgical","Radiology"]},
+    {label:"Industry & Operations",items:["Manufacturing","Supply Chain & Logistics","Construction","Oil & Gas","Mining","Agriculture","Utilities & Energy"]},
+    {label:"Media & Entertainment",items:["Sports & Athletics","Music & Audio","Film & TV Production","Publishing & Editorial","Advertising & Adtech"]},
+    {label:"Government & Defense",items:["Defense & Military","Government & Public Sector","Intelligence & National Security"]},
+    {label:"Domain-Specific Software",items:["HR Tech & Payroll","ERP Systems","CRM & Salesforce","LMS & EdTech Platforms","Student Information Systems","Real Estate Tech","Travel & Hospitality Tech","Automotive & Dealership","Retail & Merchandising","Food Service & Restaurant Tech"]},
+    {label:"Telecom",items:["Telecom & Wireless","Satellite & Broadband"]},
+  ];
 
   const toggle=(arr,val)=>arr.includes(val)?arr.filter(x=>x!==val):[...arr,val];
 
@@ -533,9 +585,16 @@ function PrefsModal({prefs,onSave,onClose}){
 
         {/* Excluded industries */}
         <SectionLabel>Industries to Exclude (Hard Skip)</SectionLabel>
-        <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:12}}>
-          {EXCLUDED.map(ind=>(
-            <button key={ind} onClick={()=>setP(x=>({...x,excludedIndustries:toggle(x.excludedIndustries||[],ind)}))} style={{padding:"5px 14px",borderRadius:RADIUS.pill,border:`1.5px solid ${(p.excludedIndustries||[]).includes(ind)?T.rose:T.cream3}`,background:(p.excludedIndustries||[]).includes(ind)?"rgba(196,119,106,0.08)":"transparent",color:(p.excludedIndustries||[]).includes(ind)?T.rose:T.gray,fontSize:12,cursor:"pointer"}}>{ind}</button>
+        <div style={{maxHeight:240,overflowY:"auto",marginBottom:12,padding:"2px 0"}}>
+          {EXCLUDED_CATEGORIES.map(cat=>(
+            <div key={cat.label} style={{marginBottom:10}}>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:T.gray3,marginBottom:5}}>{cat.label}</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {cat.items.map(ind=>(
+                  <button key={ind} onClick={()=>setP(x=>({...x,excludedIndustries:toggle(x.excludedIndustries||[],ind)}))} style={{padding:"4px 12px",borderRadius:RADIUS.pill,border:`1.5px solid ${(p.excludedIndustries||[]).includes(ind)?T.rose:T.cream3}`,background:(p.excludedIndustries||[]).includes(ind)?"rgba(196,119,106,0.08)":"transparent",color:(p.excludedIndustries||[]).includes(ind)?T.rose:T.gray,fontSize:11,cursor:"pointer"}}>{ind}</button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
         <label style={{fontSize:11,color:T.gray2,fontWeight:600,display:"block",marginBottom:4}}>Other domains to exclude</label>
