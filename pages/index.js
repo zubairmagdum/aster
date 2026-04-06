@@ -49,21 +49,21 @@ function checkHardSkip(jdText, prefs) {
     defense: ["defense contractor","department of defense","dod","classified","security clearance","government contractor"],
     networking: ["network engineer","cisco","network infrastructure","routing and switching","firewall engineer"],
     payments: ["payments infrastructure","card processing","acquiring bank","payment rails","issuer processing"],
-    lms: ["lms","learning management system","docebo","canvas lms","moodle","blackboard","student information system"],
-    audit: ["cpa certification","cpa required","audit engagement","public accounting","big four","sox compliance auditor"],
-    orthopedic: ["orthopedic","surgical instruments","medical device","cadaveric","implant","spine surgery"],
-    travel: ["corporate travel","travel management company","tmc","gds platform","sabre","amadeus"],
-    hrtech: ["hris","workday hcm","human capital management","payroll processing","adp workforce","ceridian"],
-    adtech: ["demand side platform","dsp","programmatic advertising","web tagging","tag management","rewarded ads"],
-    mortgage: ["mortgage origination","loan servicing","underwriting","fannie mae","freddie mac","heloc"],
-    govtech: ["government contracting","defense intelligence","security clearance","classified","dod","federal agency"],
-    iot: ["iot","physical operations","telematics","connected devices","fleet management","field operations"],
-    martech: ["marketing automation","martech","gtm infrastructure","lead routing","salesforce marketing cloud","marketo admin"],
+    hardware: ["hardware engineer","pcb","firmware","embedded systems","circuit design","semiconductor"],
+    crypto: ["cryptocurrency","blockchain","web3","defi","smart contract","token","nft"],
   };
   excludedDomains.forEach(domain => {
-    const keywords = domainMap[domain] || [domain.toLowerCase()];
+    const keywords = domainMap[domain.toLowerCase()] || [domain.toLowerCase()];
     if (keywords.some(k => jd.includes(k))) {
       reasons.push(`Domain excluded: ${domain}`);
+    }
+  });
+
+  // Custom exclusions (free text, comma-separated)
+  const customExclusions = (prefs.customExclusions || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+  customExclusions.forEach(term => {
+    if (jd.includes(term)) {
+      reasons.push(`Domain excluded: ${term}`);
     }
   });
 
@@ -155,11 +155,10 @@ Return ONLY valid JSON (no markdown, no fences):
   ],
   "nextAction": "<specific single next step>",
   "resumeRecommendation": {
-    "version": "<Choose from: AI|Growth|Enterprise|Healthcare|General>",
-    "reason": "<one sentence>",
-    "logic": "Use AI version for: AI-native companies, LLM products, developer tools, agentic systems, eval frameworks, AI governance, responsible AI, founding AI pod roles. Use Growth version for: B2C, lifecycle, member acquisition, activation, experimentation, PLG, CRM, onboarding optimization. Use Healthcare version for: digital health, clinical workflows, payer analytics, EHR, regulated health environments, patient engagement, health plans, value-based care, Medicaid, Medicare. Use Enterprise version for: data platforms, enterprise SaaS, 0-to-1 commercial launches, platform architecture, multi-tenant systems, infrastructure-adjacent. Use General version for: consulting firms, broad IC roles, warm referrals, unclear domain, staffing placements."
+    "version": "<best matching resume version label, or null if user has no versions>",
+    "reason": "<one sentence — based on the job description, recommend which of the user's resume versions best fits this role. If the user has not created resume versions yet, return null. When versions exist, match based on the positioning angle of each version versus the requirements of this role.>"
   },
-  "estimatedCompRange": "<$X - $Y or null if unknown. Use these real market benchmarks from actual job postings: AI-native startups Series B+: $180K-$294K. Digital health Series B-D: $128K-$225K. Enterprise SaaS growth: $155K-$245K. Big Tech: $190K-$280K+. Healthcare IT regulated: $120K-$180K. EdTech/nonprofit: $110K-$160K. Staffing placements: deduct 15-20%. Insurance/fintech: $150-$200K. Add equity note if mentioned. Return null if unknown.>",
+  "estimatedCompRange": "<$X - $Y or null if unknown. Estimate compensation range based on company size, funding stage, role seniority level, location signals, and any salary mentions in the JD. Return a range if you can make a reasonable estimate, null if not enough signal.>",
   "perksFound": ["<perk found in JD>",...],
   "perksMatch": "<Good match|Missing preferred perks|null>",
   "compWarning": <null or "estimated comp below your target">,
@@ -316,6 +315,7 @@ const DEFAULT_PREFS={
   excludedCities:[],
   targetIndustries:[],
   importantPerks:[],
+  customExclusions:"",
 };
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
@@ -488,11 +488,13 @@ function PrefsModal({prefs,onSave,onClose}){
 
         {/* Excluded industries */}
         <SectionLabel>Industries to Exclude (Hard Skip)</SectionLabel>
-        <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:24}}>
+        <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:12}}>
           {EXCLUDED.map(ind=>(
             <button key={ind} onClick={()=>setP(x=>({...x,excludedIndustries:toggle(x.excludedIndustries||[],ind)}))} style={{padding:"5px 14px",borderRadius:RADIUS.pill,border:`1.5px solid ${(p.excludedIndustries||[]).includes(ind)?T.rose:T.cream3}`,background:(p.excludedIndustries||[]).includes(ind)?"rgba(196,119,106,0.08)":"transparent",color:(p.excludedIndustries||[]).includes(ind)?T.rose:T.gray,fontSize:12,cursor:"pointer"}}>{ind}</button>
           ))}
         </div>
+        <label style={{fontSize:11,color:T.gray2,fontWeight:600,display:"block",marginBottom:4}}>Other domains to exclude</label>
+        <input className="input-base" value={p.customExclusions||""} onChange={e=>setP(x=>({...x,customExclusions:e.target.value}))} placeholder="e.g. derivatives trading, fast food chains, real estate" style={{marginBottom:24,fontSize:12}}/>
 
         {/* Perks */}
         <SectionLabel>Perks That Matter to Me</SectionLabel>
