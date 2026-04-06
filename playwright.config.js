@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: './tests',
   testMatch: ['e2e/**/*.spec.js', 'visual/**/*.spec.js', 'a11y/**/*.spec.js'],
   fullyParallel: true,
-  retries: process.env.CI ? 1 : 0,
+  retries: 1,
   reporter: [
     ['html', { open: 'never' }],
     ['list'],
