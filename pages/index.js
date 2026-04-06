@@ -167,13 +167,20 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
 .stagger>*:nth-child(1){animation-delay:0.05s;}.stagger>*:nth-child(2){animation-delay:0.1s;}.stagger>*:nth-child(3){animation-delay:0.15s;}.stagger>*:nth-child(4){animation-delay:0.2s;}.stagger>*:nth-child(5){animation-delay:0.25s;}
 .tooltip-wrap{position:relative;display:inline-flex;align-items:center;}
 .tooltip-wrap:hover .tooltip-box{opacity:1;pointer-events:auto;}
-.tooltip-box{opacity:0;pointer-events:none;transition:opacity 0.15s;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:${T.charcoal};color:${T.white};font-size:11px;padding:6px 10px;border-radius:8px;white-space:nowrap;z-index:1000;line-height:1.5;max-width:220px;white-space:normal;text-align:center;}
+.tooltip-box{opacity:0;pointer-events:none;transition:opacity 0.15s;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:${T.charcoal};color:${T.white};font-size:11px;padding:6px 10px;border-radius:8px;z-index:1000;line-height:1.5;max-width:240px;white-space:normal;text-align:center;}
 @media(max-width:900px){
   .nav-links{display:none !important;}
   .nav-right{display:none !important;}
   .nav-tagline{display:none !important;}
   .nav-hamburger{display:block !important;}
   .nav-mobile-dropdown{display:flex !important;}
+}
+@media(max-width:768px){
+  .analyze-grid{grid-template-columns:1fr !important;}
+  .score-ring{width:48px !important;height:48px !important;}
+  .score-ring span{font-size:13px !important;}
+  .dashboard-stats{grid-template-columns:repeat(2,1fr) !important;}
+  .dashboard-panels{grid-template-columns:1fr !important;}
 }
 `;
 
@@ -598,7 +605,7 @@ function DashboardView({jobs,contacts,profile,resumeText,setView,setActiveJobId,
         <div><span style={{fontSize:13,fontWeight:700,color:healthColor}}>{healthState}</span><span style={{fontSize:13,color:healthColor,marginLeft:10}}>{healthReason}</span></div>
         <div style={{fontSize:10,color:T.gray3,marginTop:4}}>Based on your activity this week</div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
+      <div className="dashboard-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
         {[{label:"Tracked",val:jobs.length,icon:"🗂️",color:T.forest},{label:"Applied",val:appliedJobs.length,icon:"📬",color:T.forest2},{label:"Active Pipeline",val:activeJobs.length,icon:"⚡",color:"#5B9BD5"},{label:"Screen Rate",val:`${screenRate}%`,icon:"🎯",color:screenRate>10?T.ok:screenRate>5?T.gold:T.rose}].map(s=>(
           <div key={s.label} className="card" style={{padding:"20px 22px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -608,7 +615,7 @@ function DashboardView({jobs,contacts,profile,resumeText,setView,setActiveJobId,
           </div>
         ))}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 320px",gap:16}}>
+      <div className="dashboard-panels" style={{display:"grid",gridTemplateColumns:"1fr 1fr 320px",gap:16}}>
         <div className="card" style={{padding:"22px 24px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
             <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:600,color:T.charcoal}}>Today's Actions</div>
@@ -708,7 +715,7 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
   const duplicate=company?checkDuplicate(company,role):null;
 
   return(
-    <div className="fade-up" style={{display:"grid",gridTemplateColumns:result?"5fr 7fr":"1fr",gap:24}}>
+    <div className="fade-up analyze-grid" style={{display:"grid",gridTemplateColumns:result?"5fr 7fr":"1fr",gap:24}}>
       <div>
         <div style={{fontFamily:"'Playfair Display',serif",fontSize:26,fontWeight:600,color:T.charcoal,marginBottom:4}}>Analyze a job</div>
         <p style={{fontSize:14,color:T.gray,marginBottom:20,lineHeight:1.6}}>Paste a job description for your fit score, tailored bullets, ATS keywords, and outreach strategy.</p>
