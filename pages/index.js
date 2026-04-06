@@ -607,15 +607,27 @@ function DashboardView({jobs,contacts,profile,resumeText,setView,setActiveJobId,
     else{healthState="ACTIVE";healthColor=T.sage;healthReason="Keep it up.";}
   }
 
+  const savedJobs=jobs.filter(j=>j.status==="Saved");
+
   return(
     <div className="fade-up">
-      {/* Strategy ping */}
-      {jobs.length>=5&&screenRate===0&&(
+      {/* Contextual ping — priority: stale > saved > response rate */}
+      {staleJobs.length>=3?(
+        <div style={{padding:"14px 20px",background:"rgba(196,119,106,0.1)",borderLeft:`4px solid ${T.rose}`,borderRadius:RADIUS.md,marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={{fontSize:13,color:T.rose,fontWeight:500}}>You have {staleJobs.length} applications with no update in 7+ days. Time to follow up or move on.</span>
+          <button className="btn-ghost" onClick={()=>setView("pipeline")} style={{fontSize:12,padding:"6px 14px",borderColor:T.rose,color:T.rose}}>Go to Pipeline →</button>
+        </div>
+      ):savedJobs.length>=5?(
+        <div style={{padding:"14px 20px",background:"rgba(184,151,90,0.1)",borderLeft:`4px solid ${T.gold}`,borderRadius:RADIUS.md,marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={{fontSize:13,color:T.gold,fontWeight:500}}>You have {savedJobs.length} saved roles you haven't applied to yet. Ready to move on them?</span>
+          <button className="btn-ghost" onClick={()=>setView("analyze")} style={{fontSize:12,padding:"6px 14px",borderColor:T.gold,color:T.gold}}>Analyze & Apply →</button>
+        </div>
+      ):jobs.length>=5&&screenRate===0?(
         <div style={{padding:"14px 20px",background:"rgba(184,151,90,0.1)",borderLeft:`4px solid ${T.gold}`,borderRadius:RADIUS.md,marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <span style={{fontSize:13,color:T.gold,fontWeight:500}}>Your response rate is 0% across {appliedJobs.length} applications. Want to review your strategy?</span>
           <button className="btn-ghost" onClick={()=>setView("strategy")} style={{fontSize:12,padding:"6px 14px",borderColor:T.gold,color:T.gold}}>Review Strategy →</button>
         </div>
-      )}
+      ):null}
       {/* Health indicator */}
       <div style={{padding:"14px 20px",background:healthColor+"1A",borderLeft:`4px solid ${healthColor}`,borderRadius:RADIUS.md,marginBottom:14}}>
         <span style={{fontSize:13,fontWeight:700,color:healthColor}}>{healthState}</span>
