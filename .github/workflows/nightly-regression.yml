@@ -1,0 +1,31 @@
+name: Nightly Regression
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  full-regression:
+    name: Full E2E Regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx vitest run
+      - run: npx playwright test --retries=2
+        env:
+          CI: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-report-${{ github.run_number }}
+          path: |
+            tests/artifacts/
+            test-results/
+            playwright-report/
+          retention-days: 30
