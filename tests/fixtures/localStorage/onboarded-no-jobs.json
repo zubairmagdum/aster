@@ -1,0 +1,22 @@
+{
+  "aster_onboarded": true,
+  "aster_resume": "Jane Smith — Senior Product Manager with 7 years experience. Led platform products at Stripe (2020-2024) and growth products at Airbnb (2017-2020). Skills: product strategy, A/B testing, SQL, cross-functional leadership, 0-to-1 launches. Education: MBA Stanford, BS Computer Science MIT.",
+  "aster_resume_name": "jane-smith-resume.pdf",
+  "aster_jobs": [],
+  "aster_contacts": [],
+  "aster_profile": {},
+  "aster_prefs": {
+    "minSalary": 180000,
+    "workMode": "Remote",
+    "employmentType": "Full-time",
+    "seniorityTarget": "Senior",
+    "hasPeopleManagement": false,
+    "excludedIndustries": ["Gaming"],
+    "excludedCities": [],
+    "targetIndustries": ["AI/ML", "SaaS"],
+    "importantPerks": ["Equity/stock options", "Remote work"],
+    "customExclusions": "",
+    "customTargetIndustries": ""
+  },
+  "aster_email": ""
+}

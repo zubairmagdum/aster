@@ -1,0 +1,62 @@
+{
+  "fitScore": 78,
+  "matchScore": 65,
+  "verdict": "Apply with Tailoring",
+  "verdictReason": "Strong platform engineering experience but needs domain-specific positioning for this observability role.",
+  "strengths": [
+    "Deep API platform experience from Stripe translates directly",
+    "Track record of 0-to-1 product launches at scale",
+    "Strong cross-functional leadership across engineering and design"
+  ],
+  "gaps": [
+    "No direct observability or monitoring domain experience",
+    "Missing infrastructure-specific technical depth (Kubernetes, Prometheus)"
+  ],
+  "transferability": {
+    "score": 70,
+    "reason": "Platform engineering skills and API design experience transfer well to observability tooling.",
+    "angle": "Position as a platform PM who has built developer-facing products — observability is another developer tool."
+  },
+  "atsKeywords": ["observability", "monitoring", "SaaS", "platform", "API"],
+  "tailoredSummary": "Product leader with 7 years building developer platforms at Stripe and Airbnb. Led API platform serving 10K+ developers with 99.99% uptime. Brings deep platform thinking and developer empathy to observability tooling.",
+  "tailoredBullets": [
+    {
+      "bullet": "Led design and launch of API observability dashboard serving 2,000+ internal developers, reducing debugging time by 40%",
+      "job": "Stripe",
+      "action": "add",
+      "replaces": null
+    },
+    {
+      "bullet": "Defined platform reliability SLOs and built monitoring framework adopted across 15 engineering teams",
+      "job": "Stripe",
+      "action": "replace",
+      "replaces": "Built internal tools for"
+    },
+    {
+      "bullet": "Drove adoption of structured logging standards across microservices, improving incident response time by 25%",
+      "job": "Airbnb",
+      "action": "add",
+      "replaces": null
+    }
+  ],
+  "nextAction": "Tailor resume with observability keywords and apply within 48 hours — this role has been posted for only 3 days.",
+  "resumeRecommendation": {
+    "version": null,
+    "reason": "Visit the Resume tab to generate positioning angles for your background."
+  },
+  "estimatedCompRange": "$160K - $210K",
+  "perksFound": ["Equity/stock options", "Remote work"],
+  "perksMatch": "Good match",
+  "compWarning": null,
+  "roleDNA": {
+    "function": "PM",
+    "domain": "SaaS",
+    "productType": "Platform",
+    "customer": "B2B Enterprise",
+    "stage": "Growth",
+    "seniority": "Sr PM",
+    "workMode": "Hybrid",
+    "coreSkills": ["observability", "platform", "developer tools"],
+    "keywords": ["monitoring", "SaaS", "API", "infrastructure"]
+  }
+}

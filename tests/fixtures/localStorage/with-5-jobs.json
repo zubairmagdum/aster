@@ -1,0 +1,143 @@
+{
+  "aster_onboarded": true,
+  "aster_resume": "Jane Smith — Senior Product Manager with 7 years experience. Led platform products at Stripe (2020-2024) and growth products at Airbnb (2017-2020). Skills: product strategy, A/B testing, SQL, cross-functional leadership, 0-to-1 launches. Education: MBA Stanford, BS Computer Science MIT.",
+  "aster_resume_name": "jane-smith-resume.pdf",
+  "aster_jobs": [
+    {
+      "id": "job_1",
+      "company": "Stripe",
+      "role": "Senior PM, Payments",
+      "status": "Applied",
+      "fitScore": 82,
+      "matchScore": 75,
+      "dateAdded": "2026-03-30",
+      "estimatedCompRange": "$180K - $250K",
+      "roleDNA": {
+        "domain": "Fintech",
+        "productType": "Platform",
+        "customer": "B2B Enterprise",
+        "stage": "Growth",
+        "function": "PM",
+        "seniority": "Sr PM",
+        "workMode": "Remote",
+        "coreSkills": ["payments", "platform"],
+        "keywords": ["API", "fintech"]
+      },
+      "aiAnalysis": null,
+      "notes": ""
+    },
+    {
+      "id": "job_2",
+      "company": "Oscar Health",
+      "role": "Product Manager, Member Experience",
+      "status": "Recruiter Screen",
+      "fitScore": 71,
+      "matchScore": 60,
+      "dateAdded": "2026-04-01",
+      "estimatedCompRange": "$150K - $190K",
+      "roleDNA": {
+        "domain": "Healthcare",
+        "productType": "Consumer",
+        "customer": "B2C",
+        "stage": "Growth",
+        "function": "PM",
+        "seniority": "PM",
+        "workMode": "Hybrid",
+        "coreSkills": ["healthcare", "member experience"],
+        "keywords": ["health", "member"]
+      },
+      "aiAnalysis": null,
+      "notes": "Recruiter call scheduled Thursday"
+    },
+    {
+      "id": "job_3",
+      "company": "Anthropic",
+      "role": "Product Manager, Claude API",
+      "status": "Saved",
+      "fitScore": 91,
+      "matchScore": 88,
+      "dateAdded": "2026-04-03",
+      "estimatedCompRange": "$200K - $280K + equity",
+      "roleDNA": {
+        "domain": "AI",
+        "productType": "Platform",
+        "customer": "B2B Enterprise",
+        "stage": "Growth",
+        "function": "PM",
+        "seniority": "Sr PM",
+        "workMode": "Hybrid",
+        "coreSkills": ["AI", "API", "developer tools"],
+        "keywords": ["LLM", "API"]
+      },
+      "aiAnalysis": null,
+      "notes": ""
+    },
+    {
+      "id": "job_4",
+      "company": "Datadog",
+      "role": "Senior PM, Observability",
+      "status": "Applied",
+      "fitScore": 68,
+      "matchScore": 55,
+      "dateAdded": "2026-03-25",
+      "estimatedCompRange": "$170K - $230K",
+      "roleDNA": {
+        "domain": "SaaS",
+        "productType": "Platform",
+        "customer": "B2B Enterprise",
+        "stage": "Public",
+        "function": "PM",
+        "seniority": "Sr PM",
+        "workMode": "Hybrid",
+        "coreSkills": ["observability", "infrastructure"],
+        "keywords": ["monitoring", "SaaS"]
+      },
+      "aiAnalysis": null,
+      "notes": ""
+    },
+    {
+      "id": "job_5",
+      "company": "Calm",
+      "role": "PM, Growth",
+      "status": "Rejected",
+      "fitScore": 58,
+      "matchScore": 40,
+      "dateAdded": "2026-03-23",
+      "estimatedCompRange": "$140K - $175K",
+      "roleDNA": {
+        "domain": "Consumer",
+        "productType": "Consumer",
+        "customer": "B2C",
+        "stage": "Growth",
+        "function": "PM",
+        "seniority": "PM",
+        "workMode": "Remote",
+        "coreSkills": ["growth", "lifecycle"],
+        "keywords": ["wellness", "B2C"]
+      },
+      "aiAnalysis": null,
+      "notes": "Generic rejection"
+    }
+  ],
+  "aster_contacts": [],
+  "aster_profile": {
+    "domain": { "Fintech": 3, "Healthcare": 2, "AI": 1 },
+    "productType": { "Platform": 4, "Consumer": 2 },
+    "customer": { "B2B Enterprise": 3, "B2C": 2 },
+    "skills": { "payments": 2, "healthcare": 1, "AI": 1 }
+  },
+  "aster_prefs": {
+    "minSalary": 180000,
+    "workMode": "Remote",
+    "employmentType": "Full-time",
+    "seniorityTarget": "Senior",
+    "hasPeopleManagement": false,
+    "excludedIndustries": ["Gaming"],
+    "excludedCities": [],
+    "targetIndustries": ["AI/ML", "SaaS"],
+    "importantPerks": ["Equity/stock options", "Remote work"],
+    "customExclusions": "",
+    "customTargetIndustries": ""
+  },
+  "aster_email": ""
+}
