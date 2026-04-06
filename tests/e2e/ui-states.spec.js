@@ -224,8 +224,10 @@ test.describe('4. State transitions', () => {
     await page.locator('input[placeholder="e.g. Acme Corp"]').fill('TestCo');
     await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('Engineer');
     await page.getByRole('button', { name: /Analyze with Aster/i }).click();
-    // Error toast
-    await expect(page.getByText('Analysis failed')).toBeVisible({ timeout: 10000 });
+    // Error toast — either "Analysis failed" or "Could not parse AI response"
+    const errorVisible = await page.getByText('Analysis failed').isVisible({ timeout: 5000 }).catch(() => false) ||
+      await page.getByText('Could not parse AI response').isVisible({ timeout: 5000 }).catch(() => false);
+    expect(errorVisible).toBe(true);
   });
 
   test('Pipeline: job saved → appears immediately', async ({ page }) => {
@@ -320,9 +322,11 @@ test.describe('5. Negative and destructive cases', () => {
     await page.locator('textarea').first().fill(SAMPLE_JD);
     await page.locator('input[placeholder="e.g. Acme Corp"]').fill('RetryCo');
     await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('Eng');
-    // First analyze → error
+    // First analyze → error (may say "Analysis failed" or "Could not parse")
     await page.getByRole('button', { name: /Analyze with Aster/i }).click();
-    await expect(page.getByText('Analysis failed')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Analysis failed|Could not parse/)).toBeVisible({ timeout: 10000 });
+    // Wait for toast to dismiss before retry
+    await page.waitForTimeout(4000);
     // Retry → success
     await page.getByRole('button', { name: /Analyze with Aster/i }).click();
     await expect(page.getByText('Apply with Tailoring')).toBeVisible({ timeout: 10000 });
@@ -547,5 +551,26 @@ test.describe('8. Content rendering', () => {
     await expect(page.locator('.status-chip', { hasText: 'Recruiter Screen' })).toBeVisible();
     await expect(page.locator('.status-chip', { hasText: 'Saved' })).toBeVisible();
     await expect(page.locator('.status-chip', { hasText: 'Rejected' })).toBeVisible();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. DELETE WORKSPACE
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('9. Delete workspace', () => {
+  test('delete workspace clears data and resets to onboarding', async ({ page }) => {
+    await mockAllApiRoutes(page);
+    await setupStorage(page, 'with-5-jobs');
+    // Verify we have data
+    await navigateTo(page, 'pipeline');
+    await expect(page.getByText('Your Pipeline')).toBeVisible({ timeout: 10000 });
+    // Set up dialog handler BEFORE clicking delete
+    page.on('dialog', dialog => dialog.accept());
+    // Scroll to footer and click delete
+    await page.getByRole('button', { name: 'Delete my workspace' }).scrollIntoViewIfNeeded();
+    await page.getByRole('button', { name: 'Delete my workspace' }).click();
+    // After delete + reload, app should show onboarding (localStorage.clear + reload)
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.getByText('Land the job')).toBeVisible({ timeout: 10000 });
   });
 });

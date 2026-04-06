@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { T, STATUS_CFG, STATUSES, DEFAULT_PREFS, getWeekKey, checkHardSkip, updateProfile, matchScore, topProfileTags, parseCSVData, parseBulkData, safeParseClaudeResponse } from "../lib/utils";
+import { T, STATUS_CFG, STATUSES, DEFAULT_PREFS, getWeekKey, checkHardSkip, updateProfile, matchScore, topProfileTags, parseCSVData, parseBulkData, safeParseClaudeResponse, checkDuplicate } from "../lib/utils";
 const RADIUS={sm:8,md:14,lg:20,xl:28,pill:999};
 const SHADOW={sm:"0 1px 4px rgba(28,28,28,0.06)",md:"0 4px 16px rgba(28,28,28,0.08)",lg:"0 8px 32px rgba(28,28,28,0.1)",xl:"0 16px 56px rgba(28,28,28,0.12)"};
 
@@ -699,11 +699,6 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
   };
 
   // ── Duplicate detection ──────────────────────────────────────────────────
-  const checkDuplicate=(comp,rl)=>{
-    if(!comp)return null;
-    return jobs.find(j=>j.company?.toLowerCase()===comp?.toLowerCase()&&j.role?.toLowerCase().includes((rl||"").toLowerCase().slice(0,10)));
-  };
-
   const analyze=async()=>{
     if(!jd.trim())return;
     setLoading(true);setResult(null);setSaved(false);
@@ -727,7 +722,7 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
   };
 
   const verdictColor=v=>v?.includes("Apply Now")?T.ok:v?.includes("Apply")?T.gold:T.rose;
-  const duplicate=company?checkDuplicate(company,role):null;
+  const duplicate=company?checkDuplicate(jobs,company,role):null;
 
   return(
     <div className="fade-up analyze-grid" style={{display:"grid",gridTemplateColumns:result?"5fr 7fr":"1fr",gap:24}}>
