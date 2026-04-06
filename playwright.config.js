@@ -4,7 +4,11 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
   retries: process.env.CI ? 1 : 0,
-  reporter: [['html', { open: 'never' }], ['list']],
+  reporter: [
+    ['html', { open: 'never' }],
+    ['list'],
+    ['./tests/reporters/bug-package-reporter.js'],
+  ],
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
