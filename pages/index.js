@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Head from "next/head";
 import { T, STATUS_CFG, STATUSES, DEFAULT_PREFS, getWeekKey, checkHardSkip, updateProfile, matchScore, topProfileTags, parseCSVData, parseBulkData, safeParseClaudeResponse, checkDuplicate } from "../lib/utils";
 import { Analytics } from "../lib/analytics";
+import { supabase, getUser, signOut } from "../lib/supabase";
+import { dbSaveJob, dbSaveAllJobs, dbLoadJobs, dbDeleteJob, dbSaveResume, dbLoadResume, dbSavePrefs, dbLoadPrefs, dbEnsureUser } from "../lib/db";
+import AuthModal from "../components/AuthModal";
 const RADIUS={sm:8,md:14,lg:20,xl:28,pill:999};
 const SHADOW={sm:"0 1px 4px rgba(28,28,28,0.06)",md:"0 4px 16px rgba(28,28,28,0.08)",lg:"0 8px 32px rgba(28,28,28,0.1)",xl:"0 16px 56px rgba(28,28,28,0.12)"};
 
@@ -231,6 +234,8 @@ export default function Aster(){
   const [activeJobId,setActiveJobId]=useState(null);
   const [showPrefs,setShowPrefs]=useState(false);
   const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
+  const [user,setUser]=useState(null);
+  const [showAuthModal,setShowAuthModal]=useState(false);
 
   useEffect(()=>{if(resumeText){Store.set("aster_resume",resumeText);Store.set("aster_resume_name",resumeFileName);Store.set("aster_resume_check",resumeText.slice(0,100));}},[resumeText]);
   // Resume persistence check — detect if resume was lost from localStorage
@@ -244,12 +249,49 @@ export default function Aster(){
   // Check for storage quota errors after any state save
   useEffect(()=>{if(_storageQuotaError){_storageQuotaError=false;setToast({msg:"Storage full — clear some applications to continue",type:"err"});}},[jobs,contacts,profile,prefs]);
 
+  // Supabase auth session check and data sync
+  useEffect(()=>{
+    if(!supabase)return;
+    const initAuth=async()=>{
+      const u=await getUser();
+      if(u){
+        setUser(u);
+        await dbEnsureUser(u);
+        // Load data from Supabase, fall back to localStorage
+        const dbJobs=await dbLoadJobs(u.id);
+        if(dbJobs&&dbJobs.length>0)setJobs(dbJobs);
+        const dbResume=await dbLoadResume(u.id);
+        if(dbResume?.text){setResumeText(dbResume.text);setResumeFileName(dbResume.name||"");}
+        const dbPrefs=await dbLoadPrefs(u.id);
+        if(dbPrefs)setPrefs(p=>({...DEFAULT_PREFS,...p,...dbPrefs}));
+      }
+    };
+    initAuth();
+    const{data:{subscription}}=supabase.auth.onAuthStateChange(async(_event,session)=>{
+      const u=session?.user??null;
+      setUser(u);
+      if(u){
+        await dbEnsureUser(u);
+        // Sync localStorage data up to Supabase on first sign-in
+        const localJobs=Store.get("aster_jobs",[]);
+        if(localJobs.length>0)await dbSaveAllJobs(localJobs,u.id);
+        const localResume=Store.get("aster_resume","");
+        const localResumeName=Store.get("aster_resume_name","");
+        if(localResume)await dbSaveResume(localResume,localResumeName,u.id);
+        const localPrefs=Store.get("aster_prefs",null);
+        if(localPrefs)await dbSavePrefs(localPrefs,u.id);
+      }
+    });
+    return()=>subscription.unsubscribe();
+  },[]);
+
   const toast_=(msg,type="ok")=>setToast({msg,type});
   const [inferring,setInferring]=useState(false);
   const [inferDone,setInferDone]=useState(false);
 
   const onResumeUploaded=async(text,name)=>{
     setResumeText(text);setResumeFileName(name);Analytics.track("resume_upload",{name});toast_(`Resume loaded: ${name}`);
+    if(user)dbSaveResume(text,name,user.id);
     // Auto-infer preferences from resume
     setInferring(true);setInferDone(false);
     try{
@@ -282,16 +324,22 @@ export default function Aster(){
     setJobs(prev=>[j,...prev]);
     if(j.roleDNA)setProfile(p=>updateProfile(p,j.roleDNA,"saved"));
     Analytics.track("fit_score_generated",{company:j.company});
+    if(user)dbSaveJob(j,user.id);
     return j;
   };
 
   const updateJob=(id,patch)=>{
-    setJobs(prev=>prev.map(j=>j.id===id?{...j,...patch}:j));
+    setJobs(prev=>{
+      const updated=prev.map(j=>j.id===id?{...j,...patch}:j);
+      const updatedJob=updated.find(j=>j.id===id);
+      if(user&&updatedJob)dbSaveJob(updatedJob,user.id);
+      return updated;
+    });
     const job=jobs.find(j=>j.id===id);
     if(patch.status&&job?.roleDNA)setProfile(p=>updateProfile(p,job.roleDNA,patch.status));
   };
 
-  const removeJob=(id)=>setJobs(prev=>prev.filter(j=>j.id!==id));
+  const removeJob=(id)=>{setJobs(prev=>prev.filter(j=>j.id!==id));if(user)dbDeleteJob(id,user.id);};
   const captureEmail=(e)=>{setEmail(e);Store.set("aster_email",e);Analytics.track("email_captured",{email:e});toast_("Workspace saved ✨");};
 
   useEffect(()=>{const seen=Store.get("aster_onboarded",false);if(seen)setScreen("app");Analytics.track("session_start");},[]);
@@ -299,7 +347,7 @@ export default function Aster(){
   const finishOnboard=()=>{Store.set("aster_onboarded",true);setScreen("app");};
   const activeJob=jobs.find(j=>j.id===activeJobId)||null;
 
-  const savePrefs=(p)=>{setPrefs(p);Store.set("aster_prefs",p);toast_("Preferences saved");setShowPrefs(false);};
+  const savePrefs=(p)=>{setPrefs(p);Store.set("aster_prefs",p);if(user)dbSavePrefs(p,user.id);toast_("Preferences saved");setShowPrefs(false);};
 
   if(screen==="onboard")return<Onboarding onComplete={finishOnboard} onResumeUploaded={onResumeUploaded} resumeFileName={resumeFileName} email={email} onEmail={captureEmail} inferring={inferring} inferDone={inferDone}/>;
   if(screen==="admin")return<AdminView onBack={()=>setScreen("app")}/>;
@@ -310,6 +358,7 @@ export default function Aster(){
       <style>{GLOBAL_CSS}</style>
       {toast&&<Toast msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
       {showPrefs&&<PrefsModal prefs={prefs} onSave={savePrefs} onClose={()=>setShowPrefs(false)}/>}
+      {showAuthModal&&<AuthModal onClose={()=>setShowAuthModal(false)}/>}
 
       {/* Nav */}
       <nav style={{background:T.white,borderBottom:`1px solid ${T.cream2}`,padding:"0 32px",height:58,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 0 rgba(28,28,28,0.04)"}}>
@@ -333,7 +382,14 @@ export default function Aster(){
         <div className="nav-right" style={{display:"flex",alignItems:"center",gap:10}}>
           {resumeFileName&&<span style={{fontSize:12,color:T.sage,display:"flex",alignItems:"center",gap:5}}><span>📄</span>{resumeFileName.slice(0,20)}</span>}
           <button onClick={()=>setShowPrefs(true)} style={{fontSize:12,color:T.gray,background:"none",border:`1px solid ${T.cream3}`,borderRadius:RADIUS.pill,padding:"5px 14px",cursor:"pointer"}}>⚙ Prefs</button>
-          {!email&&<button className="btn-ghost" style={{padding:"6px 16px",fontSize:12}} onClick={()=>{const e=prompt("Enter your email to save your workspace:");if(e?.includes("@"))captureEmail(e);}}>Save workspace</button>}
+          {user?(
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:11,color:T.sage}}>{user.email?.slice(0,20)}</span>
+              <button onClick={async()=>{await signOut();setUser(null);toast_("Signed out");}} style={{fontSize:11,color:T.gray2,background:"none",border:"none",cursor:"pointer"}}>Sign out</button>
+            </div>
+          ):(
+            <button className="btn-ghost" style={{padding:"6px 16px",fontSize:12}} onClick={()=>setShowAuthModal(true)}>Sign in</button>
+          )}
           <button onClick={()=>setScreen("admin")} style={{fontSize:11,color:T.gray3,background:"none",border:"none",cursor:"pointer"}}>Admin</button>
         </div>
       </nav>
