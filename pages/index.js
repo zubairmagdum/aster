@@ -232,7 +232,10 @@ export default function Aster(){
   const [showPrefs,setShowPrefs]=useState(false);
   const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
 
-  useEffect(()=>{if(resumeText){Store.set("aster_resume",resumeText);Store.set("aster_resume_name",resumeFileName);}},[resumeText]);
+  useEffect(()=>{if(resumeText){Store.set("aster_resume",resumeText);Store.set("aster_resume_name",resumeFileName);Store.set("aster_resume_check",resumeText.slice(0,100));}},[resumeText]);
+  // Resume persistence check — detect if resume was lost from localStorage
+  const [resumeLost,setResumeLost]=useState(false);
+  useEffect(()=>{const check=Store.get("aster_resume_check","");if(check&&!resumeText)setResumeLost(true);},[]);
   useEffect(()=>{Store.set("aster_jobs",jobs);},[jobs]);
   useEffect(()=>{Store.set("aster_contacts",contacts);},[contacts]);
   useEffect(()=>{Store.set("aster_profile",profile);},[profile]);
@@ -317,7 +320,10 @@ export default function Aster(){
         </div>
         <div className="nav-links" style={{display:"flex",gap:4}}>
           {[["dashboard","Dashboard"],["analyze","Analyze"],["pipeline","Pipeline"],["outreach","Outreach"],["strategy","Strategy"],["workshop","Resume"]].map(([id,label])=>(
-            <button key={id} className="nav-pill" onClick={()=>setView(id)} style={{background:view===id?T.forest:"transparent",color:view===id?T.white:T.gray,fontWeight:view===id?600:400}}>{label}</button>
+            <button key={id} className="nav-pill" onClick={()=>setView(id)} style={{background:view===id?T.forest:"transparent",color:view===id?T.white:T.gray,fontWeight:view===id?600:400,display:"flex",alignItems:"center",gap:4}}>
+              {label}
+              {id==="workshop"&&<span style={{width:6,height:6,borderRadius:"50%",background:resumeText?T.sage:T.gold,display:"inline-block"}}/>}
+            </button>
           ))}
         </div>
         {/* Hamburger for mobile */}
@@ -345,7 +351,7 @@ export default function Aster(){
       )}
 
       <main style={{maxWidth:1200,margin:"0 auto",padding:"28px 32px"}}>
-        {view==="dashboard"&&<DashboardView jobs={jobs} contacts={contacts} profile={profile} resumeText={resumeText} setView={setView} setActiveJobId={setActiveJobId} updateJob={updateJob} toast_={toast_} prefs={prefs}/>}
+        {view==="dashboard"&&<DashboardView jobs={jobs} contacts={contacts} profile={profile} resumeText={resumeText} setView={setView} setActiveJobId={setActiveJobId} updateJob={updateJob} toast_={toast_} prefs={prefs} resumeLost={resumeLost}/>}
         {view==="analyze"&&<AnalyzeView jobs={jobs} profile={profile} prefs={prefs} resumeText={resumeText} addJob={addJob} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} onResumeUploaded={onResumeUploaded}/>}
         {view==="pipeline"&&<PipelineView jobs={jobs} contacts={contacts} updateJob={updateJob} removeJob={removeJob} setJobs={setJobs} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} resumeText={resumeText}/>}
         {view==="outreach"&&<OutreachView jobs={jobs} contacts={contacts} setContacts={setContacts} resumeText={resumeText} activeJob={activeJob} setActiveJobId={setActiveJobId} toast_={toast_}/>}
@@ -557,7 +563,7 @@ function Onboarding({onComplete,onResumeUploaded,resumeFileName,email,onEmail,in
 }
 
 // ─── DASHBOARD VIEW ───────────────────────────────────────────────────────────
-function DashboardView({jobs,contacts,profile,resumeText,setView,setActiveJobId,updateJob,toast_,prefs}){
+function DashboardView({jobs,contacts,profile,resumeText,setView,setActiveJobId,updateJob,toast_,prefs,resumeLost}){
   const [nextActions,setNextActions]=useState(null);
   const [actionsLoading,setActionsLoading]=useState(false);
 
@@ -595,6 +601,20 @@ function DashboardView({jobs,contacts,profile,resumeText,setView,setActiveJobId,
 
   return(
     <div className="fade-up">
+      {/* Resume lost banner */}
+      {resumeLost&&(!resumeText||!resumeText.trim())&&(
+        <div style={{padding:"14px 20px",background:"rgba(196,119,106,0.1)",borderLeft:`4px solid ${T.rose}`,borderRadius:RADIUS.md,marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={{fontSize:13,color:T.rose,fontWeight:500}}>Your resume was cleared from storage. Re-upload to restore personalized analysis.</span>
+          <button className="btn-ghost" onClick={()=>setView("analyze")} style={{fontSize:12,padding:"6px 14px",borderColor:T.rose,color:T.rose}}>Re-upload →</button>
+        </div>
+      )}
+      {/* Missing resume banner */}
+      {!resumeLost&&jobs.length>0&&(!resumeText||!resumeText.trim())&&(
+        <div style={{padding:"14px 20px",background:"rgba(74,124,89,0.1)",borderLeft:`4px solid ${T.sage}`,borderRadius:RADIUS.md,marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={{fontSize:13,color:T.sage,fontWeight:500}}>⬆ Your resume isn't loaded. Upload it to get personalized fit scores.</span>
+          <button className="btn-ghost" onClick={()=>setView("analyze")} style={{fontSize:12,padding:"6px 14px",borderColor:T.sage,color:T.sage}}>Upload Resume →</button>
+        </div>
+      )}
       {/* Contextual ping — priority: stale > saved > response rate */}
       {staleJobs.length>=3?(
         <div style={{padding:"14px 20px",background:"rgba(196,119,106,0.1)",borderLeft:`4px solid ${T.rose}`,borderRadius:RADIUS.md,marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -887,6 +907,11 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
               </div>
               <p style={{fontSize:11,color:T.gray3,marginTop:10}}>Click any keyword to copy.</p>
             </div>
+          )}
+
+          {/* No-resume note */}
+          {!resumeText&&result&&(
+            <div style={{padding:"10px 14px",background:"rgba(74,124,89,0.06)",borderRadius:RADIUS.md,border:`1px solid rgba(74,124,89,0.15)`,fontSize:12,color:T.sage,marginBottom:10}}>⬆ Upload your resume for personalized bullet suggestions and stronger fit scoring.</div>
           )}
 
           {/* Save with quick status selector */}
