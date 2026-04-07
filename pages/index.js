@@ -1,15 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Head from "next/head";
 import { T, STATUS_CFG, STATUSES, DEFAULT_PREFS, getWeekKey, checkHardSkip, updateProfile, matchScore, topProfileTags, parseCSVData, parseBulkData, safeParseClaudeResponse, checkDuplicate } from "../lib/utils";
+import { Analytics } from "../lib/analytics";
 const RADIUS={sm:8,md:14,lg:20,xl:28,pill:999};
 const SHADOW={sm:"0 1px 4px rgba(28,28,28,0.06)",md:"0 4px 16px rgba(28,28,28,0.08)",lg:"0 8px 32px rgba(28,28,28,0.1)",xl:"0 16px 56px rgba(28,28,28,0.12)"};
 
-// ─── ANALYTICS ────────────────────────────────────────────────────────────────
-const Analytics = {
-  userId:()=>{let id=localStorage.getItem("aster_uid");if(!id){id="anon_"+Math.random().toString(36).slice(2,10);localStorage.setItem("aster_uid",id);}return id;},
-  track:(event,meta={})=>{const events=JSON.parse(localStorage.getItem("aster_events")||"[]");events.push({event,userId:Analytics.userId(),ts:new Date().toISOString(),week:getWeekKey(),...meta});try{localStorage.setItem("aster_events",JSON.stringify(events.slice(-500)));}catch{}},
-  getWeeklyRollup:()=>{const events=JSON.parse(localStorage.getItem("aster_events")||"[]");const byWeek={};events.forEach(e=>{const w=e.week||getWeekKey(e.ts);if(!byWeek[w])byWeek[w]={week:w,users:new Set(),resumes:0,jds:0,fitScores:0,outreach:0,emailCaptures:0};byWeek[w].users.add(e.userId);if(e.event==="resume_upload")byWeek[w].resumes++;if(e.event==="jd_analyzed")byWeek[w].jds++;if(e.event==="fit_score_generated")byWeek[w].fitScores++;if(e.event==="outreach_generated")byWeek[w].outreach++;if(e.event==="email_captured")byWeek[w].emailCaptures++;});return Object.values(byWeek).map(w=>({...w,wau:w.users.size,users:undefined})).sort((a,b)=>b.week.localeCompare(a.week));}
-};
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 let _storageQuotaError=false;
 const Store={get:(k,fb=null)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{_storageQuotaError=true;}}};
