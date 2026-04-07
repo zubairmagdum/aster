@@ -346,11 +346,11 @@ export default function Aster(){
 
       <main style={{maxWidth:1200,margin:"0 auto",padding:"28px 32px"}}>
         {view==="dashboard"&&<DashboardView jobs={jobs} contacts={contacts} profile={profile} resumeText={resumeText} setView={setView} setActiveJobId={setActiveJobId} updateJob={updateJob} toast_={toast_} prefs={prefs}/>}
-        {view==="analyze"&&<AnalyzeView jobs={jobs} profile={profile} prefs={prefs} resumeText={resumeText} addJob={addJob} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_}/>}
+        {view==="analyze"&&<AnalyzeView jobs={jobs} profile={profile} prefs={prefs} resumeText={resumeText} addJob={addJob} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} onResumeUploaded={onResumeUploaded}/>}
         {view==="pipeline"&&<PipelineView jobs={jobs} contacts={contacts} updateJob={updateJob} removeJob={removeJob} setJobs={setJobs} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} resumeText={resumeText}/>}
         {view==="outreach"&&<OutreachView jobs={jobs} contacts={contacts} setContacts={setContacts} resumeText={resumeText} activeJob={activeJob} setActiveJobId={setActiveJobId} toast_={toast_}/>}
         {view==="strategy"&&<StrategyView jobs={jobs} profile={profile} prefs={prefs}/>}
-        {view==="workshop"&&<ResumeWorkshopView resumeText={resumeText} toast_={toast_}/>}
+        {view==="workshop"&&<ResumeWorkshopView resumeText={resumeText} toast_={toast_} onResumeUploaded={onResumeUploaded}/>}
       </main>
 
       <footer style={{textAlign:"center",padding:"32px",borderTop:`1px solid ${T.cream2}`,marginTop:32}}>
@@ -660,7 +660,10 @@ function DashboardView({jobs,contacts,profile,resumeText,setView,setActiveJobId,
 }
 
 // ─── ANALYZE VIEW ─────────────────────────────────────────────────────────────
-function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobId,toast_}){
+function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobId,toast_,onResumeUploaded}){
+  const analyzeFileRef=useRef();
+  const [uploading,setUploading]=useState(false);
+  const handleAnalyzeUpload=async(file)=>{if(!file)return;setUploading(true);try{const text=await parseResume(file);onResumeUploaded(text,file.name);}catch{toast_("Could not parse file","err");}setUploading(false);};
   const [jd,setJd]=useState("");
   const [company,setCompany]=useState("");
   const [role,setRole]=useState("");
@@ -759,7 +762,16 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
           </div>
         </div>
 
-        {!resumeText&&<div style={{fontSize:12,color:T.gold,marginBottom:12,padding:"8px 12px",background:"rgba(184,151,90,0.08)",borderRadius:RADIUS.sm,border:`1px solid rgba(184,151,90,0.2)`}}>💡 Upload your resume for personalized analysis</div>}
+        {!resumeText&&(
+          <div onClick={()=>analyzeFileRef.current?.click()} style={{marginBottom:12,padding:"14px 16px",background:T.cream,border:`2px dashed ${T.sage}`,borderRadius:RADIUS.md,cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all 0.18s"}} onMouseEnter={e=>e.currentTarget.style.borderColor=T.forest} onMouseLeave={e=>e.currentTarget.style.borderColor=T.sage}>
+            <span style={{fontSize:22}}>⬆</span>
+            <div>
+              <div style={{fontSize:13,fontWeight:600,color:T.forest}}>{uploading?"Parsing...":"Upload Resume"}</div>
+              <div style={{fontSize:11,color:T.gray}}>Get personalized fit scores and tailored bullets</div>
+            </div>
+            <input ref={analyzeFileRef} type="file" accept=".pdf,.doc,.docx" style={{display:"none"}} onChange={e=>handleAnalyzeUpload(e.target.files[0])}/>
+          </div>
+        )}
         <button className="btn-primary" onClick={analyze} disabled={loading||!jd.trim()} style={{width:"100%",fontSize:14,padding:"13px"}}>
           {loading?<span style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><Spinner/>Analyzing...</span>:"✦ Analyze with Aster AI"}
         </button>
@@ -1364,7 +1376,10 @@ Return ONLY valid JSON:
 }
 
 // ─── RESUME WORKSHOP VIEW ─────────────────────────────────────────────────────
-function ResumeWorkshopView({resumeText,toast_}){
+function ResumeWorkshopView({resumeText,toast_,onResumeUploaded}){
+  const workshopFileRef=useRef();
+  const [workshopUploading,setWorkshopUploading]=useState(false);
+  const handleWorkshopUpload=async(file)=>{if(!file)return;setWorkshopUploading(true);try{const text=await parseResume(file);onResumeUploaded(text,file.name);}catch{toast_("Could not parse file","err");}setWorkshopUploading(false);};
   const [versions,setVersions]=useState(()=>Store.get("aster_resume_versions",null));
   const [loading,setLoading]=useState(false);
   const [jdSnippet,setJdSnippet]=useState("");
@@ -1376,7 +1391,9 @@ function ResumeWorkshopView({resumeText,toast_}){
       <div className="fade-up" style={{textAlign:"center",padding:"80px 20px"}}>
         <div style={{fontSize:36,marginBottom:12}}>📄</div>
         <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:T.gray,marginBottom:8}}>Upload your resume first to use Resume Workshop</div>
-        <p style={{fontSize:13,color:T.gray2}}>Go to onboarding or use the resume upload to get started.</p>
+        <p style={{fontSize:13,color:T.gray2,marginBottom:20}}>Upload a PDF or DOCX to get started with positioning angles.</p>
+        <button className="btn-primary" onClick={()=>workshopFileRef.current?.click()} style={{fontSize:14,padding:"12px 28px"}}>{workshopUploading?<span style={{display:"flex",alignItems:"center",gap:8}}><Spinner/>Parsing...</span>:"⬆ Upload Resume"}</button>
+        <input ref={workshopFileRef} type="file" accept=".pdf,.doc,.docx" style={{display:"none"}} onChange={e=>handleWorkshopUpload(e.target.files[0])}/>
       </div>
     );
   }
