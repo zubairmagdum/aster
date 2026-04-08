@@ -33,6 +33,8 @@ JD (first 600 chars): ${jdText.slice(0,600)}`,
 CANDIDATE RESUME:
 ${resumeText?.slice(0,2500)||"Not provided"}
 
+${(()=>{try{const pp=JSON.parse(localStorage.getItem("aster_proof_library"));if(pp?.length>0)return"CANDIDATE PROOF POINTS (use these to identify strengths and tailored bullets):\n"+pp.slice(0,5).map(p=>`- ${p.claim}${p.metric?` (${p.metric})`:""}`).join("\n");return"";}catch{return"";}})()}
+
 USER'S LEARNED PROFILE:
 ${JSON.stringify(profile||{})}
 
@@ -438,7 +440,7 @@ export default function Aster(){
         {view==="pipeline"&&<PipelineView jobs={jobs} contacts={contacts} updateJob={updateJob} removeJob={removeJob} setJobs={setJobs} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} resumeText={resumeText}/>}
         {view==="outreach"&&<OutreachView jobs={jobs} contacts={contacts} setContacts={setContacts} resumeText={resumeText} activeJob={activeJob} setActiveJobId={setActiveJobId} toast_={toast_}/>}
         {view==="strategy"&&<StrategyView jobs={jobs} profile={profile} prefs={prefs}/>}
-        {view==="workshop"&&<ResumeWorkshopView resumeText={resumeText} toast_={toast_} onResumeUploaded={onResumeUploaded}/>}
+        {view==="workshop"&&<ResumeWorkshopView resumeText={resumeText} toast_={toast_} onResumeUploaded={onResumeUploaded} userId={user?.id}/>}
       </main>
 
       <FeedbackWidget userId={user?.id} currentView={view} toast_={toast_}/>
@@ -1570,7 +1572,95 @@ Return ONLY valid JSON:
 }
 
 // ─── RESUME WORKSHOP VIEW ─────────────────────────────────────────────────────
-function ResumeWorkshopView({resumeText,toast_,onResumeUploaded}){
+// ─── PROOF LIBRARY ────────────────────────────────────────────────────────────
+function ProofLibrary({toast_,userId}){
+  const [open,setOpen]=useState(false);
+  const [linkedinText,setLinkedinText]=useState("");
+  const [proofs,setProofs]=useState(()=>Store.get("aster_proof_library",null));
+  const [extracting,setExtracting]=useState(false);
+
+  // Load from Supabase on mount if signed in
+  useEffect(()=>{
+    if(!supabase||!userId)return;
+    supabase.from("candidate_profiles").select("proof_library").eq("user_id",userId).maybeSingle().then(({data})=>{
+      if(data?.proof_library)setProofs(data.proof_library);
+    });
+  },[userId]);
+
+  const extract=async()=>{
+    if(!linkedinText.trim())return;
+    setExtracting(true);
+    try{
+      const r=await callClaude(`You are a career strategist. Extract the strongest, most quantifiable proof points from this professional text.
+
+For each proof point extract:
+- claim: the achievement or capability
+- metric: any number, percentage, or scale mentioned (or null)
+- skill: the primary skill demonstrated
+- context: company or role context
+- strength: rate 1-5 how compelling this is as an interview/resume point
+
+Return ONLY valid JSON array:
+[{ "claim": "", "metric": "", "skill": "", "context": "", "strength": 0 }]
+
+Text: ${linkedinText.slice(0,3000)}`,800);
+      const points=Array.isArray(r)?r:(r?._parseError?[]:r);
+      if(Array.isArray(points)&&points.length>0){
+        const sorted=[...points].sort((a,b)=>(b.strength||0)-(a.strength||0));
+        setProofs(sorted);
+        Store.set("aster_proof_library",sorted);
+        if(supabase&&userId)supabase.from("candidate_profiles").upsert({user_id:userId,linkedin_text:linkedinText,proof_library:sorted},{onConflict:"user_id"});
+        toast_(`Extracted ${sorted.length} proof points`);
+      }else{toast_("Could not extract proof points","err");}
+    }catch{toast_("Extraction failed","err");}
+    setExtracting(false);
+  };
+
+  return(
+    <div style={{marginTop:24}}>
+      <div onClick={()=>setOpen(v=>!v)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",padding:"14px 18px",background:T.cream,borderRadius:RADIUS.md,border:`1px solid ${T.cream3}`}}>
+        <div>
+          <div style={{fontSize:14,fontWeight:600,color:T.charcoal}}>Your Proof Library</div>
+          <div style={{fontSize:11,color:T.gray2}}>Build from LinkedIn or career text{proofs?.length>0?` · ${proofs.length} proof points`:""}</div>
+        </div>
+        <span style={{color:T.gray3,fontSize:14,transform:open?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
+      </div>
+      {open&&(
+        <div className="fade-in" style={{marginTop:10}}>
+          <div className="card" style={{padding:"18px"}}>
+            <p style={{fontSize:12,color:T.gray,marginBottom:10,lineHeight:1.6}}>Paste your LinkedIn About section, Experience, or Skills. Aster extracts your strongest proof points.</p>
+            <textarea className="input-base" rows={5} value={linkedinText} onChange={e=>setLinkedinText(e.target.value)} placeholder="Paste your LinkedIn About section, job descriptions, or any career text here..." style={{resize:"vertical",lineHeight:1.6,marginBottom:10}}/>
+            <button className="btn-primary" onClick={extract} disabled={extracting||!linkedinText.trim()} style={{fontSize:13}}>{extracting?<span style={{display:"flex",alignItems:"center",gap:8}}><Spinner/>Extracting...</span>:"Extract Proof Points"}</button>
+          </div>
+          {proofs?.length>0&&(
+            <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:8}}>
+              {proofs.map((p,i)=>(
+                <div key={i} className="card" style={{padding:"14px 16px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:500,color:T.charcoal,lineHeight:1.5}}>{p.claim}</div>
+                      <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
+                        {p.metric&&<span className="tag" style={{background:"rgba(45,74,62,0.08)",color:T.forest,borderColor:"rgba(45,74,62,0.15)"}}>{p.metric}</span>}
+                        {p.skill&&<span className="tag">{p.skill}</span>}
+                        {p.context&&<span style={{fontSize:10,color:T.gray2}}>{p.context}</span>}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                      <div style={{fontSize:10,color:T.sage}}>{"★".repeat(p.strength||0)}{"☆".repeat(5-(p.strength||0))}</div>
+                      <button onClick={()=>{navigator.clipboard?.writeText(p.claim);toast_("Copied!");}} style={{fontSize:10,color:T.forest,background:"none",border:"none",cursor:"pointer"}}>Copy</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ResumeWorkshopView({resumeText,toast_,onResumeUploaded,userId}){
   const workshopFileRef=useRef();
   const [workshopUploading,setWorkshopUploading]=useState(false);
   const handleWorkshopUpload=async(file)=>{if(!file)return;setWorkshopUploading(true);try{const text=await parseResume(file);onResumeUploaded(text,file.name);}catch{toast_("Could not parse file","err");}setWorkshopUploading(false);};
@@ -1673,6 +1763,8 @@ Return ONLY valid JSON:
           </div>
         </>
       )}
+      {/* Proof Library */}
+      <ProofLibrary toast_={toast_} userId={userId}/>
     </div>
   );
 }
