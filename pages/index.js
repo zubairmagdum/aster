@@ -3,7 +3,7 @@ import Head from "next/head";
 import { T, STATUS_CFG, STATUSES, DEFAULT_PREFS, getWeekKey, checkHardSkip, updateProfile, matchScore, topProfileTags, parseCSVData, parseBulkData, safeParseClaudeResponse, checkDuplicate } from "../lib/utils";
 import { Analytics } from "../lib/analytics";
 import { supabase, getUser, signOut, signInWithGoogle } from "../lib/supabase";
-import { dbSaveJob, dbSaveAllJobs, dbLoadJobs, dbDeleteJob, dbSaveResume, dbLoadResume, dbSavePrefs, dbLoadPrefs, dbSaveContact, dbLoadContacts, dbEnsureUser } from "../lib/db";
+import { dbSaveJob, dbSaveAllJobs, dbLoadJobs, dbDeleteJob, dbSaveResume, dbLoadResume, dbSavePrefs, dbLoadPrefs, dbSaveContact, dbLoadContacts, dbEnsureUser, dbSubmitRating, dbSubmitFeedback } from "../lib/db";
 import AuthModal from "../components/AuthModal";
 const RADIUS={sm:8,md:14,lg:20,xl:28,pill:999};
 const SHADOW={sm:"0 1px 4px rgba(28,28,28,0.06)",md:"0 4px 16px rgba(28,28,28,0.08)",lg:"0 8px 32px rgba(28,28,28,0.1)",xl:"0 16px 56px rgba(28,28,28,0.12)"};
@@ -441,6 +441,7 @@ export default function Aster(){
         {view==="workshop"&&<ResumeWorkshopView resumeText={resumeText} toast_={toast_} onResumeUploaded={onResumeUploaded}/>}
       </main>
 
+      <FeedbackWidget userId={user?.id} currentView={view} toast_={toast_}/>
       <footer style={{textAlign:"center",padding:"32px",borderTop:`1px solid ${T.cream2}`,marginTop:32}}>
         <p style={{fontSize:11,color:T.gray3,lineHeight:1.7}}>
           ✦ Aster — Your resume stays private. Your data is never sold.{" "}
@@ -559,6 +560,75 @@ function PrefsModal({prefs,onSave,onClose}){
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── ANALYSIS FEEDBACK ────────────────────────────────────────────────────────
+function AnalysisFeedback({result,company,role,userId}){
+  const [rated,setRated]=useState(null);
+  const [showReasons,setShowReasons]=useState(false);
+  const [submitted,setSubmitted]=useState(false);
+  const reasons=["Score seems too high","Score seems too low","Missing key strengths","Wrong gaps identified","Other"];
+  const submit=(rating,disagreement=null)=>{
+    const payload={user_id:userId||null,job_local_id:String(Date.now()),company,role,fit_score:result?.fitScore,verdict:result?.verdict,rating,disagreement};
+    dbSubmitRating(payload);
+    const ratings=Store.get("aster_ratings")||[];
+    ratings.push({...payload,created_at:new Date().toISOString()});
+    Store.set("aster_ratings",ratings.slice(-100));
+    setRated(rating);setShowReasons(false);setSubmitted(true);
+  };
+  if(submitted)return<div style={{marginTop:10,fontSize:11,color:T.sage}}>Thanks for the feedback</div>;
+  return(
+    <div style={{marginTop:10}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:11,color:T.gray2}}>Was this helpful?</span>
+        <button onClick={()=>submit("up")} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",opacity:rated==="up"?1:0.4,filter:rated==="up"?"none":"grayscale(1)"}}>👍</button>
+        <button onClick={()=>{setRated("down");setShowReasons(true);}} style={{background:"none",border:"none",fontSize:16,cursor:"pointer",opacity:rated==="down"?1:0.4,filter:rated==="down"?"none":"grayscale(1)"}}>👎</button>
+      </div>
+      {showReasons&&(
+        <div className="fade-in" style={{marginTop:6,display:"flex",gap:6,flexWrap:"wrap"}}>
+          {reasons.map(r=><button key={r} onClick={()=>submit("down",r)} style={{fontSize:10,padding:"4px 10px",borderRadius:RADIUS.pill,border:`1px solid ${T.cream3}`,background:T.cream,color:T.gray,cursor:"pointer"}}>{r}</button>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── FEEDBACK WIDGET ─────────────────────────────────────────────────────────
+function FeedbackWidget({userId,currentView,toast_}){
+  const [open,setOpen]=useState(false);
+  const [type,setType]=useState("general");
+  const [message,setMessage]=useState("");
+  const [sending,setSending]=useState(false);
+  const submit=async()=>{
+    if(!message.trim())return;
+    setSending(true);
+    await dbSubmitFeedback({user_id:userId||null,type,context:currentView,message:message.trim()});
+    const fb=Store.get("aster_feedback")||[];
+    fb.push({type,context:currentView,message:message.trim(),created_at:new Date().toISOString()});
+    Store.set("aster_feedback",fb.slice(-50));
+    setMessage("");setOpen(false);setSending(false);
+    toast_("Thanks for your feedback!");
+  };
+  return(
+    <>
+      <button onClick={()=>setOpen(v=>!v)} style={{position:"fixed",bottom:24,right:24,zIndex:200,background:T.sage,color:T.white,border:"none",borderRadius:RADIUS.pill,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",boxShadow:SHADOW.md,display:"flex",alignItems:"center",gap:5}}>💬 Feedback</button>
+      {open&&(
+        <div style={{position:"fixed",bottom:64,right:24,zIndex:200,background:T.white,borderRadius:RADIUS.lg,padding:"20px",width:320,boxShadow:SHADOW.xl,border:`1px solid ${T.cream2}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <span style={{fontWeight:600,fontSize:14,color:T.charcoal}}>Share feedback</span>
+            <button onClick={()=>setOpen(false)} style={{background:"none",border:"none",fontSize:16,color:T.gray3,cursor:"pointer"}}>✕</button>
+          </div>
+          <div style={{display:"flex",gap:6,marginBottom:10}}>
+            {[["bug","Bug report"],["feature","Feature request"],["general","General"]].map(([v,l])=>(
+              <button key={v} onClick={()=>setType(v)} style={{fontSize:11,padding:"4px 10px",borderRadius:RADIUS.pill,border:`1.5px solid ${type===v?T.forest:T.cream3}`,background:type===v?"rgba(45,74,62,0.08)":"transparent",color:type===v?T.forest:T.gray,cursor:"pointer"}}>{l}</button>
+            ))}
+          </div>
+          <textarea value={message} onChange={e=>setMessage(e.target.value)} placeholder="Tell us what's on your mind..." rows={3} style={{width:"100%",padding:"10px",fontSize:13,border:`1.5px solid ${T.cream3}`,borderRadius:RADIUS.md,outline:"none",background:T.cream,color:T.charcoal,resize:"vertical",lineHeight:1.5,boxSizing:"border-box",marginBottom:10}}/>
+          <button onClick={submit} disabled={sending||!message.trim()} className="btn-primary" style={{width:"100%",fontSize:13,padding:"10px"}}>{sending?"Sending...":"Submit"}</button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -931,6 +1001,8 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
                 {result.perksFound.map((p,i)=><span key={i} className="tag" style={{background:"rgba(139,168,136,0.1)",color:T.sage,borderColor:"rgba(139,168,136,0.2)"}}>{p}</span>)}
               </div>
             )}
+            {/* Feedback */}
+            <AnalysisFeedback result={result} company={company} role={role} userId={user?.id}/>
           </div>
 
           {/* Tabs */}
