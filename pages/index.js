@@ -3,7 +3,7 @@ import Head from "next/head";
 import { T, STATUS_CFG, STATUSES, DEFAULT_PREFS, getWeekKey, checkHardSkip, updateProfile, matchScore, topProfileTags, parseCSVData, parseBulkData, safeParseClaudeResponse, checkDuplicate } from "../lib/utils";
 import { Analytics } from "../lib/analytics";
 import { supabase, getUser, signOut, signInWithGoogle } from "../lib/supabase";
-import { dbSaveJob, dbSaveAllJobs, dbLoadJobs, dbDeleteJob, dbSaveResume, dbLoadResume, dbSavePrefs, dbLoadPrefs, dbSaveContact, dbLoadContacts, dbEnsureUser, dbSubmitRating, dbSubmitFeedback } from "../lib/db";
+import { dbSaveJob, dbSaveAllJobs, dbLoadJobs, dbDeleteJob, dbSaveResume, dbLoadResume, dbSavePrefs, dbLoadPrefs, dbSaveContact, dbLoadContacts, dbEnsureUser, dbSubmitRating, dbSubmitFeedback, dbSaveStrategy, dbLoadStrategy } from "../lib/db";
 import AuthModal from "../components/AuthModal";
 const RADIUS={sm:8,md:14,lg:20,xl:28,pill:999};
 const SHADOW={sm:"0 1px 4px rgba(28,28,28,0.06)",md:"0 4px 16px rgba(28,28,28,0.08)",lg:"0 8px 32px rgba(28,28,28,0.1)",xl:"0 16px 56px rgba(28,28,28,0.12)"};
@@ -282,6 +282,18 @@ export default function Aster(){
       }
       const supaContacts=await dbLoadContacts(userId);
       if(supaContacts&&supaContacts.length>0)setContacts(supaContacts);
+      // Strategy
+      const supaStrategy=await dbLoadStrategy(userId);
+      if(supaStrategy){
+        if(supaStrategy.targetRole)Store.set("aster_target_role",supaStrategy.targetRole);
+        if(supaStrategy.whatsWorking)Store.set("aster_whats_working",supaStrategy.whatsWorking);
+        if(supaStrategy.whatsNot)Store.set("aster_whats_not_working",supaStrategy.whatsNot);
+        if(supaStrategy.weeklyBrief)Store.set("aster_strategy_brief",supaStrategy.weeklyBrief);
+      }else{
+        // Sync localStorage strategy up if Supabase is empty
+        const localStrategy={targetRole:Store.get("aster_target_role",""),whatsWorking:Store.get("aster_whats_working",""),whatsNot:Store.get("aster_whats_not_working",""),weeklyBrief:Store.get("aster_strategy_brief",null)};
+        if(localStrategy.targetRole||localStrategy.whatsWorking||localStrategy.whatsNot)await dbSaveStrategy(localStrategy,userId);
+      }
     }catch(e){/* sync failed silently */}
   };
 
@@ -439,7 +451,7 @@ export default function Aster(){
         {view==="analyze"&&<AnalyzeView jobs={jobs} profile={profile} prefs={prefs} resumeText={resumeText} addJob={addJob} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} onResumeUploaded={onResumeUploaded} user={user} onAuthRequired={(pendingJob)=>{pendingJobRef.current=pendingJob;setShowAuthModal(true);}}/>}
         {view==="pipeline"&&<PipelineView jobs={jobs} contacts={contacts} updateJob={updateJob} removeJob={removeJob} setJobs={setJobs} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} resumeText={resumeText}/>}
         {view==="outreach"&&<OutreachView jobs={jobs} contacts={contacts} setContacts={setContacts} resumeText={resumeText} activeJob={activeJob} setActiveJobId={setActiveJobId} toast_={toast_}/>}
-        {view==="strategy"&&<StrategyView jobs={jobs} profile={profile} prefs={prefs}/>}
+        {view==="strategy"&&<StrategyView jobs={jobs} profile={profile} prefs={prefs} userId={user?.id}/>}
         {view==="workshop"&&<ResumeWorkshopView resumeText={resumeText} toast_={toast_} onResumeUploaded={onResumeUploaded} userId={user?.id}/>}
       </main>
 
@@ -1495,12 +1507,13 @@ function ImportHistoryModal({onClose,setJobs,toast_,userId}){
 }
 
 // ─── STRATEGY VIEW ────────────────────────────────────────────────────────────
-function StrategyView({jobs,profile,prefs}){
+function StrategyView({jobs,profile,prefs,userId}){
   const [targetRole,setTargetRole]=useState(()=>Store.get("aster_target_role",""));
   const [working,setWorking]=useState(()=>Store.get("aster_whats_working",""));
   const [notWorking,setNotWorking]=useState(()=>Store.get("aster_whats_not_working",""));
   const [brief,setBrief]=useState(()=>Store.get("aster_strategy_brief",null));
   const [loading,setLoading]=useState(false);
+  const saveTimerRef=useRef(null);
 
   const appliedJobs=jobs.filter(j=>!["Saved","Ready to Apply","Skipped"].includes(j.status));
   const activeJobs=jobs.filter(j=>["Recruiter Screen","HM Interview","Final Round"].includes(j.status));
@@ -1510,7 +1523,14 @@ function StrategyView({jobs,profile,prefs}){
   const now=new Date();
   const applicationsThisWeek=jobs.filter(j=>{if(!j.dateAdded)return false;return(now-new Date(j.dateAdded))/86400000<=7&&!["Saved","Ready to Apply","Skipped"].includes(j.status);}).length;
 
-  const saveField=(key,val)=>{Store.set(key,val);};
+  const saveField=(key,val)=>{
+    Store.set(key,val);
+    // Debounce Supabase save
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current=setTimeout(()=>{
+      dbSaveStrategy({targetRole,whatsWorking:working,whatsNot:notWorking,weeklyBrief:brief,[key==="aster_target_role"?"targetRole":key==="aster_whats_working"?"whatsWorking":"whatsNot"]:val},userId);
+    },1500);
+  };
 
   const generateBrief=async()=>{
     setLoading(true);
@@ -1535,6 +1555,7 @@ Return ONLY valid JSON:
       const result=await callClaude(prompt);
       setBrief(result);
       Store.set("aster_strategy_brief",result);
+      dbSaveStrategy({targetRole,whatsWorking:working,whatsNot:notWorking,weeklyBrief:result},userId);
     }catch{}
     setLoading(false);
   };
