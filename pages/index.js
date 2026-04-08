@@ -254,84 +254,56 @@ export default function Aster(){
   const syncedRef=useRef(false);
 
   const syncAndLoad=async(userId)=>{
-    console.log('[SYNC] syncAndLoad called', {
-      userId,
-      syncedAlready: syncedRef.current,
-      localJobCount: (Store.get("aster_jobs")||[]).length,
-      hasResume: !!Store.get("aster_resume"),
-      hasPrefs: !!Store.get("aster_prefs"),
-    });
-    if(syncedRef.current){console.log('[SYNC] already synced, skipping');return;}
+    if(syncedRef.current)return;
     syncedRef.current=true;
-    console.log('[SYNC] starting sync for user', userId);
     try{
-      // Load from Supabase first — if it has data, Supabase is source of truth
       const supaJobs=await dbLoadJobs(userId);
       if(supaJobs&&supaJobs.length>0){
-        console.log('[SYNC] using Supabase jobs', { count: supaJobs.length });
         setJobs(supaJobs);
       }else{
-        // Supabase is empty — sync localStorage up (filter header rows)
         const localJobs=Store.get("aster_jobs",[]);
         const validJobs=localJobs.filter(j=>j.company&&j.company.toLowerCase().trim()!=='company'&&j.role&&j.role.toLowerCase().trim()!=='role');
-        console.log('[SYNC] Supabase empty, syncing localStorage up', { localJobCount: localJobs.length, validJobCount: validJobs.length });
         if(validJobs.length>0)await dbSaveAllJobs(validJobs,userId);
       }
       const supaResume=await dbLoadResume(userId);
-      if(supaResume?.text){
-        console.log('[SYNC] using Supabase resume');
-        setResumeText(supaResume.text);setResumeFileName(supaResume.name||"");
-      }else{
+      if(supaResume?.text){setResumeText(supaResume.text);setResumeFileName(supaResume.name||"");}
+      else{
         const localResume=Store.get("aster_resume","");
         const localResumeName=Store.get("aster_resume_name","");
-        if(localResume){console.log('[SYNC] syncing localStorage resume up');await dbSaveResume(localResume,localResumeName,userId);}
+        if(localResume)await dbSaveResume(localResume,localResumeName,userId);
       }
       const supaPrefs=await dbLoadPrefs(userId);
-      if(supaPrefs){
-        console.log('[SYNC] using Supabase prefs');
-        setPrefs(p=>({...DEFAULT_PREFS,...p,...supaPrefs}));
-      }else{
+      if(supaPrefs){setPrefs(p=>({...DEFAULT_PREFS,...p,...supaPrefs}));}
+      else{
         const localPrefs=Store.get("aster_prefs",null);
-        if(localPrefs){console.log('[SYNC] syncing localStorage prefs up');await dbSavePrefs(localPrefs,userId);}
+        if(localPrefs)await dbSavePrefs(localPrefs,userId);
       }
-      // Contacts
       const supaContacts=await dbLoadContacts(userId);
-      if(supaContacts&&supaContacts.length>0){console.log('[SYNC] using Supabase contacts', { count: supaContacts.length });setContacts(supaContacts);}
-      console.log('[SYNC] sync complete');
-    }catch(e){console.error("[SYNC] ERROR:",e);}
+      if(supaContacts&&supaContacts.length>0)setContacts(supaContacts);
+    }catch(e){/* sync failed silently */}
   };
 
   useEffect(()=>{
     if(!supabase)return;
     const initAuth=async()=>{
       const u=await getUser();
-      console.log('[AUTH] initAuth', { userId: u?.id, email: u?.email });
-      if(u){
-        setUser(u);
-        await dbEnsureUser(u);
-        await syncAndLoad(u.id);
-      }
+      if(u){setUser(u);await dbEnsureUser(u);await syncAndLoad(u.id);}
     };
     initAuth();
     const{data:{subscription}}=supabase.auth.onAuthStateChange(async(event,session)=>{
       const u=session?.user??null;
-      console.log('[AUTH] onAuthStateChange', { event, userId: u?.id, email: u?.email });
       setUser(u);
       if(event==='SIGNED_IN'&&u){
-        // Reset sync guard so fresh sign-in always syncs
-        console.log('[AUTH] SIGNED_IN — resetting syncedRef and running sync');
         syncedRef.current=false;
         await dbEnsureUser(u);
         await syncAndLoad(u.id);
-        // Auto-save pending job if user just signed in to save
         if(pendingJobRef.current){
           const pj=pendingJobRef.current;
           pendingJobRef.current=null;
-          const j=addJob(pj);
+          addJob(pj);
           toast_(`Signed in! ${pj.company} saved to pipeline.`);
         }
       }else if(u&&!syncedRef.current){
-        // Other events (TOKEN_REFRESHED, etc) — sync only if not yet synced
         await dbEnsureUser(u);
         await syncAndLoad(u.id);
       }
