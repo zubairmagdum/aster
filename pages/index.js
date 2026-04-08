@@ -1149,6 +1149,12 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
           ):(
             <button className="btn-ghost" onClick={()=>setView("pipeline")} style={{width:"100%"}}>✓ Saved — View pipeline →</button>
           )}
+
+          {/* Share results */}
+          <div style={{display:"flex",gap:8,marginTop:10}}>
+            <button className="btn-ghost" style={{flex:1,fontSize:12,padding:"8px 14px"}} onClick={()=>{const text=`I just analyzed a ${role||"job"} role with Aster and scored ${result?.fitScore||"—"}/100. Try it free: astercopilot.com`;navigator.clipboard?.writeText(text);toast_("Copied!");ph.capture("share_results_clicked",{method:"copy",score:result?.fitScore,jobTitle:role});}}>📋 Copy shareable summary</button>
+            <button className="btn-ghost" style={{flex:1,fontSize:12,padding:"8px 14px"}} onClick={()=>{const text=encodeURIComponent(`I just analyzed a ${role||"job"} role with Aster and scored ${result?.fitScore||"—"}/100. Try it free: astercopilot.com`);window.open(`https://www.linkedin.com/sharing/share-offsite/?url=https://astercopilot.com`,"_blank");ph.capture("share_results_clicked",{method:"linkedin",score:result?.fitScore,jobTitle:role});}}>🔗 Share on LinkedIn</button>
+          </div>
         </div>
       )}
     </div>
