@@ -934,9 +934,18 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
   const verdictColor=v=>v?.includes("Apply Now")?T.ok:v?.includes("Apply")?T.gold:T.rose;
   const duplicate=company?checkDuplicate(jobs,company,role):null;
 
+  const isFirstVisit=jobs.length===0&&!result;
+
   return(
     <div className="fade-up analyze-grid" style={{display:"grid",gridTemplateColumns:result?"5fr 7fr":"1fr",gap:24}}>
       <div>
+        {isFirstVisit&&(
+          <div style={{marginBottom:24,textAlign:"center",padding:"8px 0"}}>
+            <div style={{fontFamily:"'Playfair Display',serif",fontSize:28,fontWeight:600,color:T.charcoal,lineHeight:1.2,marginBottom:8}}>Stop guessing which jobs to apply to.</div>
+            <p style={{fontSize:15,color:T.gray,lineHeight:1.7,maxWidth:520,margin:"0 auto 6px"}}>Paste any job description. Get your fit score, gap analysis, tailored resume bullets, and outreach strategy in 15 seconds.</p>
+            <p style={{fontSize:12,color:T.gray3}}>No sign-up required. Free.</p>
+          </div>
+        )}
         <div style={{fontFamily:"'Playfair Display',serif",fontSize:26,fontWeight:600,color:T.charcoal,marginBottom:4}}>Analyze a job</div>
         <p style={{fontSize:14,color:T.gray,marginBottom:20,lineHeight:1.6}}>Paste a job description for your fit score, tailored bullets, ATS keywords, and outreach strategy.</p>
 
