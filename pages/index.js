@@ -5,6 +5,7 @@ import { Analytics } from "../lib/analytics";
 import { supabase, getUser, signOut, signInWithGoogle } from "../lib/supabase";
 import { dbSaveJob, dbSaveAllJobs, dbLoadJobs, dbDeleteJob, dbSaveResume, dbLoadResume, dbSavePrefs, dbLoadPrefs, dbSaveContact, dbLoadContacts, dbEnsureUser, dbSubmitRating, dbSubmitFeedback, dbSaveStrategy, dbLoadStrategy } from "../lib/db";
 import AuthModal from "../components/AuthModal";
+import { initPosthog, ph } from "../lib/posthog";
 const RADIUS={sm:8,md:14,lg:20,xl:28,pill:999};
 const SHADOW={sm:"0 1px 4px rgba(28,28,28,0.06)",md:"0 4px 16px rgba(28,28,28,0.08)",lg:"0 8px 32px rgba(28,28,28,0.1)",xl:"0 16px 56px rgba(28,28,28,0.12)"};
 
@@ -231,7 +232,8 @@ export default function Aster(){
     }
     return{...DEFAULT_PREFS,...p};
   });
-  const [view,setView]=useState("dashboard");
+  const [view,setView_]=useState("dashboard");
+  const setView=(v)=>{setView_(v);ph.capture('page_view',{view:v});};
   const [toast,setToast]=useState(null);
   const [activeJobId,setActiveJobId]=useState(null);
   const [showPrefs,setShowPrefs]=useState(false);
@@ -309,6 +311,8 @@ export default function Aster(){
       setUser(u);
       if(event==='SIGNED_IN'&&u){
         syncedRef.current=false;
+        ph.identify(u.id,{email:u.email});
+        ph.capture('sign_in_completed',{method:u.app_metadata?.provider||'magic_link'});
         await dbEnsureUser(u);
         await syncAndLoad(u.id);
         if(pendingJobRef.current){
@@ -382,7 +386,7 @@ export default function Aster(){
   const removeJob=(id)=>{setJobs(prev=>prev.filter(j=>j.id!==id));if(user)dbDeleteJob(id,user.id);};
   const captureEmail=(e)=>{setEmail(e);Store.set("aster_email",e);Analytics.track("email_captured",{email:e});toast_("Workspace saved ✨");};
 
-  useEffect(()=>{const seen=Store.get("aster_onboarded",false);if(seen)setScreen("app");Analytics.track("session_start");},[]);
+  useEffect(()=>{const seen=Store.get("aster_onboarded",false);if(seen)setScreen("app");Analytics.track("session_start");initPosthog();},[]);
 
   const finishOnboard=()=>{Store.set("aster_onboarded",true);setScreen("app");};
   const activeJob=jobs.find(j=>j.id===activeJobId)||null;
@@ -425,10 +429,10 @@ export default function Aster(){
           {user?(
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:11,color:T.sage}}>{user.email?.slice(0,20)}</span>
-              <button onClick={async()=>{await signOut();setUser(null);toast_("Signed out");}} style={{fontSize:11,color:T.gray2,background:"none",border:"none",cursor:"pointer"}}>Sign out</button>
+              <button onClick={async()=>{await signOut();setUser(null);ph.reset();toast_("Signed out");}} style={{fontSize:11,color:T.gray2,background:"none",border:"none",cursor:"pointer"}}>Sign out</button>
             </div>
           ):(
-            <button className="btn-ghost" style={{padding:"6px 16px",fontSize:12}} onClick={()=>setShowAuthModal(true)}>Sign in</button>
+            <button className="btn-ghost" style={{padding:"6px 16px",fontSize:12}} onClick={()=>{ph.capture('auth_modal_opened',{trigger:'nav'});setShowAuthModal(true);}}>Sign in</button>
           )}
           <button onClick={()=>setScreen("admin")} style={{fontSize:11,color:T.gray3,background:"none",border:"none",cursor:"pointer"}}>Admin</button>
         </div>
@@ -893,15 +897,17 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
   // ── Duplicate detection ──────────────────────────────────────────────────
   const analyze=async()=>{
     if(!jd.trim())return;
+    const startTime=Date.now();
+    ph.capture('analyze_clicked',{has_resume:!!resumeText,jd_length:jd.length,company,role});
     setLoading(true);setResult(null);setSaved(false);
     try{
       const r=await callClaude(PROMPTS.analyze(resumeText,jd,profile,prefs));
       if(r._parseError){toast_("Could not parse AI response. Try again.","err");setLoading(false);return;}
       const ms=matchScore(r?.roleDNA,profile);
-      // Comp range warning
       if(r.estimatedCompRange&&r.estimatedCompRange!=="null"&&prefs?.minSalary){const nums=r.estimatedCompRange.match(/(\d[\d,]*)/g);if(nums){const maxVal=Math.max(...nums.map(n=>parseInt(n.replace(/,/g,""))));const normalizedMax=maxVal<1000?maxVal*1000:maxVal;if(normalizedMax<prefs.minSalary*0.85){r.compWarning=`Estimated comp may be below your $${Math.round(prefs.minSalary/1000)}K target`;}}}
       setResult({...r,matchScore:ms});
       Analytics.track("jd_analyzed",{company,fitScore:r.fitScore});
+      ph.capture('analyze_completed',{fit_score:r.fitScore,verdict:r.verdict,company,role,duration_ms:Date.now()-startTime});
     }catch{toast_("Analysis failed. Check your connection.","err");}
     setLoading(false);
   };
@@ -910,12 +916,13 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
     if(!company||!role){toast_("Add company and role name first","err");return;}
     const jobData={company,role,status:saveStatus,fitScore:result?.fitScore,matchScore:result?.matchScore,roleDNA:result?.roleDNA,aiAnalysis:result,estimatedCompRange:result?.estimatedCompRange||null,atsScore:result?.atsKeywords?.length||0,notes:"",interestRating:3};
     if(!user&&onAuthRequired){
-      // User not signed in — prompt auth, save pending job for after sign-in
+      ph.capture('auth_modal_opened',{trigger:'save_job'});
       onAuthRequired(jobData);
       return;
     }
     addJob(jobData);
     setSaved(true);
+    ph.capture('job_saved',{status:saveStatus,fit_score:result?.fitScore,verdict:result?.verdict,company,role});
     toast_(`${company} saved as "${saveStatus}" ✦`);
   };
 
