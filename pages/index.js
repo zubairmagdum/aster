@@ -270,10 +270,11 @@ export default function Aster(){
         console.log('[SYNC] using Supabase jobs', { count: supaJobs.length });
         setJobs(supaJobs);
       }else{
-        // Supabase is empty — sync localStorage up
+        // Supabase is empty — sync localStorage up (filter header rows)
         const localJobs=Store.get("aster_jobs",[]);
-        console.log('[SYNC] Supabase empty, syncing localStorage up', { localJobCount: localJobs.length });
-        if(localJobs.length>0)await dbSaveAllJobs(localJobs,userId);
+        const validJobs=localJobs.filter(j=>j.company&&j.company.toLowerCase().trim()!=='company'&&j.role&&j.role.toLowerCase().trim()!=='role');
+        console.log('[SYNC] Supabase empty, syncing localStorage up', { localJobCount: localJobs.length, validJobCount: validJobs.length });
+        if(validJobs.length>0)await dbSaveAllJobs(validJobs,userId);
       }
       const supaResume=await dbLoadResume(userId);
       if(supaResume?.text){
