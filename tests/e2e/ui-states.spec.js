@@ -561,16 +561,64 @@ test.describe('9. Delete workspace', () => {
   test('delete workspace clears data and resets to onboarding', async ({ page }) => {
     await mockAllApiRoutes(page);
     await setupStorage(page, 'with-5-jobs');
-    // Verify we have data
     await navigateTo(page, 'pipeline');
     await expect(page.getByText('Your Pipeline')).toBeVisible({ timeout: 10000 });
-    // Set up dialog handler BEFORE clicking delete
     page.on('dialog', dialog => dialog.accept());
-    // Scroll to footer and click delete
     await page.getByRole('button', { name: 'Delete my workspace' }).scrollIntoViewIfNeeded();
     await page.getByRole('button', { name: 'Delete my workspace' }).click();
-    // After delete + reload, app should show onboarding (localStorage.clear + reload)
     await page.waitForLoadState('domcontentloaded');
     await expect(page.getByText('Land the job')).toBeVisible({ timeout: 10000 });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. FEEDBACK WIDGET AND NEW FEATURES
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe('10. Feedback widget and new features', () => {
+  test('feedback widget appears on every view', async ({ page }) => {
+    await mockAllApiRoutes(page);
+    await setupStorage(page, 'onboarded-no-jobs');
+    await expect(page.getByRole('button', { name: /Feedback/ })).toBeVisible();
+    await navigateTo(page, 'analyze');
+    await expect(page.getByRole('button', { name: /Feedback/ })).toBeVisible();
+    await navigateTo(page, 'pipeline');
+    await expect(page.getByRole('button', { name: /Feedback/ })).toBeVisible();
+  });
+
+  test('feedback widget opens and closes', async ({ page }) => {
+    await mockAllApiRoutes(page);
+    await setupStorage(page, 'onboarded-no-jobs');
+    await page.getByRole('button', { name: /Feedback/ }).click();
+    await expect(page.getByText('Share feedback')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Bug report' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Feature request' })).toBeVisible();
+    // Close
+    await page.locator('button', { hasText: '✕' }).last().click();
+    await expect(page.getByText('Share feedback')).not.toBeVisible();
+  });
+
+  test('thumbs up/down appear after analysis', async ({ page }) => {
+    await mockAllApiRoutes(page);
+    await setupStorage(page, 'onboarded-no-jobs');
+    await navigateTo(page, 'analyze');
+    await page.locator('textarea').first().fill('Senior Software Engineer at Acme Corp. 5+ years experience required. Build scalable APIs and distributed systems. Python, Go, AWS. Competitive compensation, equity, remote work, unlimited PTO.');
+    await page.locator('input[placeholder="e.g. Acme Corp"]').fill('Acme');
+    await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('Eng');
+    await page.getByRole('button', { name: /Analyze with Aster/i }).click();
+    await expect(page.getByText('Apply with Tailoring')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Was this helpful?')).toBeVisible();
+    await expect(page.getByText('👍')).toBeVisible();
+    await expect(page.getByText('👎')).toBeVisible();
+  });
+
+  test('privacy link in footer navigates to /privacy', async ({ page }) => {
+    await mockAllApiRoutes(page);
+    await setupStorage(page, 'onboarded-no-jobs');
+    const privacyLink = page.locator('a[href="/privacy"]');
+    await privacyLink.scrollIntoViewIfNeeded();
+    await expect(privacyLink).toBeVisible();
+    await privacyLink.click();
+    await expect(page.getByText('Privacy Policy')).toBeVisible();
+    await expect(page.getByText('What we collect')).toBeVisible();
   });
 });

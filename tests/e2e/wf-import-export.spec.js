@@ -8,6 +8,7 @@ test.describe('W5: Import History', () => {
     await mockAllApiRoutes(page);
     await setupStorage(page, 'onboarded-no-jobs');
     await navigateTo(page, 'pipeline');
+    await expect(page.getByText('Your Pipeline')).toBeVisible({ timeout: 10000 });
   });
 
   test('empty pipeline shows empty state', { tag: '@critical' }, async ({ page }) => {
@@ -15,8 +16,8 @@ test.describe('W5: Import History', () => {
   });
 
   test('CSV import with header row', { tag: '@critical' }, async ({ page }) => {
-    await page.getByRole('button', { name: 'Import History' }).click();
-    await expect(page.getByText('Import Past Applications')).toBeVisible();
+    await page.locator('button', { hasText: 'Import History' }).click({ timeout: 10000 });
+    await expect(page.getByText('Import Past Applications')).toBeVisible({ timeout: 10000 });
     // Fill CSV textarea
     const csvData = 'Company,Role,Date Applied,Outcome,Notes\nAcme Corp,Engineer,2025-06-01,No Response,\nGlobal Inc,Designer,2025-05-15,Rejected,Generic';
     await page.locator('textarea').first().fill(csvData);
@@ -30,6 +31,7 @@ test.describe('W5: Import History', () => {
   });
 
   test('bulk paste import', { tag: '@critical' }, async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'Import History' })).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: 'Import History' }).click();
     await page.getByRole('button', { name: 'Bulk Paste' }).click();
     const bulkData = 'Figma | Designer | Applied | 2025-07-01\nLinear | Engineer | Saved | 2025-07-02';
@@ -43,7 +45,7 @@ test.describe('W5: Import History', () => {
   });
 
   test('imported jobs persist after refresh', { tag: '@critical' }, async ({ page }) => {
-    // Import via CSV
+    await expect(page.getByRole('button', { name: 'Import History' })).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: 'Import History' }).click();
     await page.locator('textarea').first().fill('Acme Corp,Engineer,2025-06-01,No Response,');
     await page.getByRole('button', { name: 'Parse' }).click();

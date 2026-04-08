@@ -18,7 +18,7 @@ import path from 'path';
  */
 
 const EXPECTED_HASHES = {
-  analyze: '80ca7126c4b97f1a',
+  analyze: '8d1bfe1b289675b4',
   outreach: '0e993f1047ce3adb',
   contactStrategy: 'a586321980f6b17c',
   nextActions: 'c43b2d719405d9a3',

@@ -128,3 +128,30 @@ describe('Analytics', () => {
     });
   });
 });
+
+describe('PostHog ph wrapper', () => {
+  it('ph.capture is a no-op when NEXT_PUBLIC_POSTHOG_KEY is not set', async () => {
+    // PostHog key is not set in test environment
+    const { ph } = await import('../../lib/posthog.js');
+    // Should not throw
+    expect(() => ph.capture('test_event', { foo: 'bar' })).not.toThrow();
+  });
+
+  it('ph.identify is a no-op when key is not set', async () => {
+    const { ph } = await import('../../lib/posthog.js');
+    expect(() => ph.identify('user_123', { email: 'test@test.com' })).not.toThrow();
+  });
+
+  it('ph.reset is a no-op when key is not set', async () => {
+    const { ph } = await import('../../lib/posthog.js');
+    expect(() => ph.reset()).not.toThrow();
+  });
+
+  it('Analytics.track still works independently of PostHog', () => {
+    clearStore();
+    Analytics.track('jd_analyzed', { company: 'TestCo' });
+    const events = JSON.parse(store['aster_events']);
+    expect(events.length).toBe(1);
+    expect(events[0].event).toBe('jd_analyzed');
+  });
+});

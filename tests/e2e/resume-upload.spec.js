@@ -15,7 +15,7 @@ test.describe('Resume File Upload', () => {
     await fileInput.setInputFiles(path.join(__dirname, '..', 'fixtures', 'resumes', 'short_resume.txt'));
     // Mock parse-resume returns text → "Resume loaded" toast should appear
     // After parse, it navigates to email step
-    await expect(page.getByText('Save your workspace')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Save your data across devices')).toBeVisible({ timeout: 10000 });
   });
 
   test('upload triggers preference inference', { tag: '@critical' }, async ({ page }) => {
@@ -25,7 +25,7 @@ test.describe('Resume File Upload', () => {
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles(path.join(__dirname, '..', 'fixtures', 'resumes', 'short_resume.txt'));
     // After upload, wait for email step (inference runs in background)
-    await expect(page.getByText('Save your workspace')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Save your data across devices')).toBeVisible({ timeout: 10000 });
     // Verify inferred prefs were saved to localStorage
     const prefs = await page.evaluate(() => JSON.parse(localStorage.getItem('aster_prefs') || '{}'));
     expect(prefs.prefsInferred).toBe(true);
@@ -37,7 +37,7 @@ test.describe('Resume File Upload', () => {
     await page.getByText('Get started').click();
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles(path.join(__dirname, '..', 'fixtures', 'resumes', 'short_resume.txt'));
-    await expect(page.getByText('Save your workspace')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Save your data across devices')).toBeVisible({ timeout: 10000 });
     // Check localStorage has resume text
     const resumeText = await page.evaluate(() => localStorage.getItem('aster_resume'));
     expect(resumeText).toBeTruthy();

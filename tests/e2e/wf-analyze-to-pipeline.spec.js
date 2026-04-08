@@ -29,10 +29,13 @@ test.describe('W2: Analyze JD → Save to Pipeline', () => {
     await expect(page.getByText('monitoring')).toBeVisible();
     await page.getByRole('button', { name: 'Resume Tailoring' }).click();
     await expect(page.getByText('Tailored Summary')).toBeVisible();
-    // Save
+    // Save — auth modal appears for unsigned users, dismiss it
     await page.getByRole('button', { name: 'Applied', exact: true }).click();
     await page.getByRole('button', { name: /Save to pipeline/i }).click();
-    await expect(page.getByText(/Acme Corp saved/)).toBeVisible();
+    // Auth modal may appear — dismiss if present
+    const authModal = await page.getByText('Continue without account').isVisible().catch(() => false);
+    if (authModal) await page.getByText('Continue without account').click();
+    await expect(page.getByText(/Acme Corp saved/)).toBeVisible({ timeout: 5000 });
     // Pipeline
     await navigateTo(page, 'pipeline');
     await expect(page.getByText('Acme Corp').first()).toBeVisible();
@@ -49,11 +52,33 @@ test.describe('W2: Analyze JD → Save to Pipeline', () => {
     await expect(page.getByText('Apply with Tailoring')).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: 'Applied', exact: true }).click();
     await page.getByRole('button', { name: /Save to pipeline/i }).click();
-    await expect(page.getByText(/Acme Corp saved/)).toBeVisible();
+    const authModal2 = await page.getByText('Continue without account').isVisible().catch(() => false);
+    if (authModal2) await page.getByText('Continue without account').click();
+    await expect(page.getByText(/Acme Corp saved/)).toBeVisible({ timeout: 5000 });
     await page.reload();
     await page.waitForLoadState('networkidle');
     await navigateTo(page, 'pipeline');
     await expect(page.getByText('Acme Corp')).toBeVisible();
+  });
+});
+
+test.describe('Auth modal on save', () => {
+  test('auth modal shows "Save your pipeline" and Google button when saving without auth', { tag: '@critical' }, async ({ page }) => {
+    await mockAllApiRoutes(page);
+    await setupStorage(page, 'onboarded-no-jobs');
+    await navigateTo(page, 'analyze');
+    await page.locator('textarea').first().fill(SAMPLE_JD);
+    await page.locator('input[placeholder="e.g. Acme Corp"]').fill('AuthTestCo');
+    await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('Engineer');
+    await page.getByRole('button', { name: /Analyze with Aster/i }).click();
+    await expect(page.getByText('Apply with Tailoring')).toBeVisible({ timeout: 10000 });
+    // Click save — no user signed in → auth modal should appear
+    await page.getByRole('button', { name: /Save to pipeline/i }).click();
+    await expect(page.getByText('Save your pipeline')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Continue with Google')).toBeVisible();
+    // Close modal
+    await page.getByText('Continue without account').click();
+    await expect(page.getByText('Save your pipeline')).not.toBeVisible();
   });
 });
 

@@ -402,7 +402,7 @@ export default function Aster(){
       <style>{GLOBAL_CSS}</style>
       {toast&&<Toast msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
       {showPrefs&&<PrefsModal prefs={prefs} onSave={savePrefs} onClose={()=>setShowPrefs(false)}/>}
-      {showAuthModal&&<AuthModal onClose={()=>setShowAuthModal(false)}/>}
+      {showAuthModal&&<AuthModal onClose={()=>{setShowAuthModal(false);if(pendingJobRef.current&&!user){const pj=pendingJobRef.current;pendingJobRef.current=null;addJob(pj);toast_(`${pj.company} saved locally`);}}}/>}
 
       {/* Nav */}
       <nav style={{background:T.white,borderBottom:`1px solid ${T.cream2}`,padding:"0 32px",height:58,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 0 rgba(28,28,28,0.04)"}}>
@@ -453,7 +453,7 @@ export default function Aster(){
       <main style={{maxWidth:1200,margin:"0 auto",padding:"28px 32px"}}>
         {view==="dashboard"&&<DashboardView jobs={jobs} contacts={contacts} profile={profile} resumeText={resumeText} setView={setView} setActiveJobId={setActiveJobId} updateJob={updateJob} toast_={toast_} prefs={prefs} resumeLost={resumeLost} user={user} onSignIn={()=>setShowAuthModal(true)}/>}
         {view==="analyze"&&<AnalyzeView jobs={jobs} profile={profile} prefs={prefs} resumeText={resumeText} addJob={addJob} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} onResumeUploaded={onResumeUploaded} user={user} onAuthRequired={(pendingJob)=>{pendingJobRef.current=pendingJob;setShowAuthModal(true);}}/>}
-        {view==="pipeline"&&<PipelineView jobs={jobs} contacts={contacts} updateJob={updateJob} removeJob={removeJob} setJobs={setJobs} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} resumeText={resumeText}/>}
+        {view==="pipeline"&&<PipelineView jobs={jobs} contacts={contacts} updateJob={updateJob} removeJob={removeJob} setJobs={setJobs} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} resumeText={resumeText} userId={user?.id}/>}
         {view==="outreach"&&<OutreachView jobs={jobs} contacts={contacts} setContacts={setContacts} resumeText={resumeText} activeJob={activeJob} setActiveJobId={setActiveJobId} toast_={toast_}/>}
         {view==="strategy"&&<StrategyView jobs={jobs} profile={profile} prefs={prefs} userId={user?.id}/>}
         {view==="workshop"&&<ResumeWorkshopView resumeText={resumeText} toast_={toast_} onResumeUploaded={onResumeUploaded} userId={user?.id}/>}
@@ -1122,7 +1122,7 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
 }
 
 // ─── PIPELINE VIEW ────────────────────────────────────────────────────────────
-function PipelineView({jobs,contacts,updateJob,removeJob,setJobs,setView,setActiveJobId,toast_,resumeText}){
+function PipelineView({jobs,contacts,updateJob,removeJob,setJobs,setView,setActiveJobId,toast_,resumeText,userId}){
   const [filter,setFilter]=useState("All");
   const [expanded,setExpanded]=useState(null);
   const [selectedIds,setSelectedIds]=useState([]);
@@ -1161,7 +1161,7 @@ function PipelineView({jobs,contacts,updateJob,removeJob,setJobs,setView,setActi
 
   return(
     <div className="fade-up">
-      {showImport&&<ImportHistoryModal onClose={()=>setShowImport(false)} setJobs={setJobs} toast_={toast_} userId={user?.id}/>}
+      {showImport&&<ImportHistoryModal onClose={()=>setShowImport(false)} setJobs={setJobs} toast_={toast_} userId={userId}/>}
       {/* Interview Prep Modal */}
       {prepJobId&&(
         <div style={{position:"fixed",inset:0,zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(28,28,28,0.4)"}}>
