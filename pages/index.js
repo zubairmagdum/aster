@@ -865,15 +865,21 @@ function DashboardView({jobs,contacts,profile,resumeText,setView,setActiveJobId,
 // ─── EMAIL CAPTURE ────────────────────────────────────────────────────────────
 function EmailCapture(){
   const [subEmail,setSubEmail]=useState("");
+  const [digestOptIn,setDigestOptIn]=useState(true);
   const [subscribed,setSubscribed]=useState(false);
+  const submit=()=>{if(!subEmail.includes('@'))return;dbSubscribeEmail(subEmail,'website',digestOptIn);setSubscribed(true);};
   if(subscribed)return<div style={{marginTop:16,fontSize:12,color:T.sage,textAlign:"center"}}>You're in! We'll keep you posted.</div>;
   return(
     <div style={{marginTop:20,padding:"14px 16px",background:T.cream,borderRadius:RADIUS.md,border:`1px solid ${T.cream3}`}}>
       <div style={{fontSize:12,color:T.gray,marginBottom:8}}>Want updates on new features?</div>
-      <div style={{display:"flex",gap:8}}>
-        <input type="email" value={subEmail} onChange={e=>setSubEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&subEmail.includes('@')&&(dbSubscribeEmail(subEmail),setSubscribed(true))} placeholder="you@email.com" style={{flex:1,padding:"8px 12px",fontSize:13,border:`1.5px solid ${T.cream3}`,borderRadius:RADIUS.pill,outline:"none",background:T.white,color:T.charcoal}}/>
-        <button onClick={()=>{if(!subEmail.includes('@'))return;dbSubscribeEmail(subEmail);setSubscribed(true);}} style={{background:T.forest,color:T.white,border:"none",borderRadius:RADIUS.pill,padding:"8px 18px",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>Subscribe</button>
+      <div style={{display:"flex",gap:8,marginBottom:8}}>
+        <input type="email" value={subEmail} onChange={e=>setSubEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} placeholder="you@email.com" style={{flex:1,padding:"8px 12px",fontSize:13,border:`1.5px solid ${T.cream3}`,borderRadius:RADIUS.pill,outline:"none",background:T.white,color:T.charcoal}}/>
+        <button onClick={submit} style={{background:T.forest,color:T.white,border:"none",borderRadius:RADIUS.pill,padding:"8px 18px",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>Subscribe</button>
       </div>
+      <label style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:T.gray2,cursor:"pointer"}}>
+        <input type="checkbox" checked={digestOptIn} onChange={e=>setDigestOptIn(e.target.checked)} style={{accentColor:T.forest}}/>
+        Get weekly job search insights
+      </label>
     </div>
   );
 }
