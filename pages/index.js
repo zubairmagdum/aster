@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Head from "next/head";
 import { T, STATUS_CFG, STATUSES, DEFAULT_PREFS, getWeekKey, checkHardSkip, updateProfile, matchScore, topProfileTags, parseCSVData, parseBulkData, safeParseClaudeResponse, checkDuplicate } from "../lib/utils";
 import { Analytics } from "../lib/analytics";
-import { supabase, getUser, signOut } from "../lib/supabase";
+import { supabase, getUser, signOut, signInWithGoogle } from "../lib/supabase";
 import { dbSaveJob, dbSaveAllJobs, dbLoadJobs, dbDeleteJob, dbSaveResume, dbLoadResume, dbSavePrefs, dbLoadPrefs, dbSaveContact, dbLoadContacts, dbEnsureUser } from "../lib/db";
 import AuthModal from "../components/AuthModal";
 const RADIUS={sm:8,md:14,lg:20,xl:28,pill:999};
@@ -375,7 +375,7 @@ export default function Aster(){
 
   const savePrefs=(p)=>{setPrefs(p);Store.set("aster_prefs",p);if(user)dbSavePrefs(p,user.id);toast_("Preferences saved");setShowPrefs(false);};
 
-  if(screen==="onboard")return<Onboarding onComplete={finishOnboard} onResumeUploaded={onResumeUploaded} resumeFileName={resumeFileName} email={email} onEmail={captureEmail} inferring={inferring} inferDone={inferDone}/>;
+  if(screen==="onboard")return<Onboarding onComplete={finishOnboard} onResumeUploaded={onResumeUploaded} resumeFileName={resumeFileName} inferring={inferring} inferDone={inferDone} user={user}/>;
   if(screen==="admin")return<AdminView onBack={()=>setScreen("app")}/>;
 
   return(
@@ -444,6 +444,7 @@ export default function Aster(){
       <footer style={{textAlign:"center",padding:"32px",borderTop:`1px solid ${T.cream2}`,marginTop:32}}>
         <p style={{fontSize:11,color:T.gray3,lineHeight:1.7}}>
           ✦ Aster — Your resume stays private. Your data is never sold.{" "}
+          <a href="/privacy" style={{color:T.gray3,fontSize:11,marginRight:8}}>Privacy Policy</a>
           <button onClick={()=>{if(window.confirm("Delete all your Aster data?")){localStorage.clear();window.location.reload();}}} style={{color:T.rose,background:"none",border:"none",cursor:"pointer",fontSize:11}}>Delete my workspace</button>
         </p>
       </footer>
@@ -562,30 +563,29 @@ function PrefsModal({prefs,onSave,onClose}){
 }
 
 // ─── ONBOARDING ───────────────────────────────────────────────────────────────
-function Onboarding({onComplete,onResumeUploaded,resumeFileName,email,onEmail,inferring,inferDone}){
+function Onboarding({onComplete,onResumeUploaded,resumeFileName,inferring,inferDone,user}){
   const [step,setStep]=useState("welcome");
   const [uploading,setUploading]=useState(false);
   const [dragging,setDragging]=useState(false);
-  const [emailInput,setEmailInput]=useState(email||"");
   const [pasteText,setPasteText]=useState("");
   const fileRef=useRef();
 
   const handleFile=async(file)=>{
     if(!file)return;
     setUploading(true);
-    try{const text=await parseResume(file);onResumeUploaded(text,file.name);setStep("email");}
-    catch(e){console.error("Parse failed:",e);setStep("paste");}
+    try{const text=await parseResume(file);onResumeUploaded(text,file.name);setStep("signin");}
+    catch(e){setStep("paste");}
     setUploading(false);
   };
 
-  const progressStep={welcome:0,upload:1,paste:1,email:2}[step]||0;
+  const progressStep={welcome:0,upload:1,paste:1,signin:2}[step]||0;
 
   return(
     <div style={{minHeight:"100vh",background:T.cream,display:"flex",flexDirection:"column"}}>
       <style>{GLOBAL_CSS}</style>
       {step!=="welcome"&&(
         <div style={{display:"flex",gap:6,justifyContent:"center",padding:"24px 0 0"}}>
-          {[1,2,3].map(n=><div key={n} style={{width:n<=progressStep?24:6,height:6,borderRadius:3,background:n<=progressStep?T.forest:T.cream3,transition:"all 0.3s"}}/>)}
+          {[1,2].map(n=><div key={n} style={{width:n<=progressStep?24:6,height:6,borderRadius:3,background:n<=progressStep?T.forest:T.cream3,transition:"all 0.3s"}}/>)}
         </div>
       )}
       <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -613,8 +613,8 @@ function Onboarding({onComplete,onResumeUploaded,resumeFileName,email,onEmail,in
             </div>
             <input ref={fileRef} type="file" accept=".pdf,.doc,.docx" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])}/>
             <div style={{marginTop:16,display:"flex",gap:10}}>
-              {resumeFileName&&<button className="btn-primary" style={{flex:1}} onClick={()=>setStep("email")}>Continue →</button>}
-              <button className="btn-ghost" style={{flex:1}} onClick={()=>setStep("email")}>Skip for now</button>
+              {resumeFileName&&<button className="btn-primary" style={{flex:1}} onClick={()=>setStep("signin")}>Continue →</button>}
+              <button className="btn-ghost" style={{flex:1}} onClick={()=>setStep("signin")}>Skip for now</button>
             </div>
           </div>
         )}
@@ -623,20 +623,20 @@ function Onboarding({onComplete,onResumeUploaded,resumeFileName,email,onEmail,in
             <div style={{fontFamily:"'Playfair Display',serif",fontSize:28,color:T.charcoal,marginBottom:8}}>Paste your resume text</div>
             <p style={{fontSize:13,color:T.gray,marginBottom:16}}>We could not auto-parse your file. Paste the text below instead.</p>
             <textarea className="input-base" rows={10} placeholder="Paste resume text here..." style={{resize:"vertical",lineHeight:1.6}} value={pasteText} onChange={e=>setPasteText(e.target.value)}/>
-            <button className="btn-primary" style={{width:"100%",marginTop:14}} onClick={()=>{onResumeUploaded(pasteText,"resume (pasted)");setStep("email");}}>Continue →</button>
-            <button className="btn-ghost" style={{width:"100%",marginTop:8}} onClick={()=>setStep("email")}>Skip</button>
+            <button className="btn-primary" style={{width:"100%",marginTop:14}} onClick={()=>{onResumeUploaded(pasteText,"resume (pasted)");setStep("signin");}}>Continue →</button>
+            <button className="btn-ghost" style={{width:"100%",marginTop:8}} onClick={()=>setStep("signin")}>Skip</button>
           </div>
         )}
-        {step==="email"&&(
-          <div className="bloom" style={{maxWidth:460,margin:"0 auto",padding:"40px 20px"}}>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:32,fontWeight:600,color:T.charcoal,marginBottom:8}}>Save your workspace</div>
-            <p style={{fontSize:14,color:T.gray,lineHeight:1.7,marginBottom:24}}>Add your email to export results and save progress across devices. Totally optional.</p>
-            <input className="input-base" type="email" placeholder="you@email.com" value={emailInput} onChange={e=>setEmailInput(e.target.value)}/>
-            <div style={{marginTop:14,display:"flex",gap:10}}>
-              {emailInput.includes("@")&&<button className="btn-primary" style={{flex:1}} onClick={()=>{onEmail(emailInput);onComplete();}}>Save and start ✦</button>}
-              <button className="btn-ghost" style={{flex:1}} onClick={onComplete}>Skip — go to app</button>
-            </div>
-            <p style={{fontSize:11,color:T.gray3,marginTop:14,lineHeight:1.6}}>Your resume is processed locally. We never sell your data. Delete your workspace any time.</p>
+        {step==="signin"&&(
+          <div className="bloom" style={{maxWidth:460,margin:"0 auto",padding:"40px 20px",textAlign:"center"}}>
+            <div style={{fontFamily:"'Playfair Display',serif",fontSize:32,fontWeight:600,color:T.charcoal,marginBottom:8}}>Save your data across devices</div>
+            <p style={{fontSize:14,color:T.gray,lineHeight:1.7,marginBottom:24}}>Sign in to keep your jobs, resume, and progress synced. Totally optional.</p>
+            <button onClick={()=>signInWithGoogle()} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:10,padding:"12px",background:T.white,border:"1px solid #E0E0E0",borderRadius:RADIUS.pill,fontSize:14,fontWeight:500,color:T.charcoal,cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.08)",marginBottom:16}}>
+              <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 010-3.04V5.41H1.83a8 8 0 000 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.5 7.49a4.77 4.77 0 014.48-3.3z"/></svg>
+              Continue with Google
+            </button>
+            <button onClick={onComplete} style={{fontSize:13,color:T.gray2,background:"none",border:"none",cursor:"pointer"}}>Skip for now — go to app</button>
+            <p style={{fontSize:11,color:T.gray3,marginTop:20,lineHeight:1.6}}>Your resume is processed locally. We never sell your data.</p>
           </div>
         )}
       </div>
