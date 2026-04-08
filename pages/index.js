@@ -253,6 +253,13 @@ export default function Aster(){
   const syncedRef=useRef(false);
 
   const syncAndLoad=async(userId)=>{
+    console.log('[SYNC] syncAndLoad called', {
+      userId,
+      syncedAlready: syncedRef.current,
+      localJobCount: (Store.get("aster_jobs")||[]).length,
+      hasResume: !!Store.get("aster_resume"),
+      hasPrefs: !!Store.get("aster_prefs"),
+    });
     if(syncedRef.current){console.log('[SYNC] already synced, skipping');return;}
     syncedRef.current=true;
     console.log('[SYNC] starting sync for user', userId);
@@ -270,23 +277,26 @@ export default function Aster(){
       }
       const supaResume=await dbLoadResume(userId);
       if(supaResume?.text){
+        console.log('[SYNC] using Supabase resume');
         setResumeText(supaResume.text);setResumeFileName(supaResume.name||"");
       }else{
         const localResume=Store.get("aster_resume","");
         const localResumeName=Store.get("aster_resume_name","");
-        if(localResume)await dbSaveResume(localResume,localResumeName,userId);
+        if(localResume){console.log('[SYNC] syncing localStorage resume up');await dbSaveResume(localResume,localResumeName,userId);}
       }
       const supaPrefs=await dbLoadPrefs(userId);
       if(supaPrefs){
+        console.log('[SYNC] using Supabase prefs');
         setPrefs(p=>({...DEFAULT_PREFS,...p,...supaPrefs}));
       }else{
         const localPrefs=Store.get("aster_prefs",null);
-        if(localPrefs)await dbSavePrefs(localPrefs,userId);
+        if(localPrefs){console.log('[SYNC] syncing localStorage prefs up');await dbSavePrefs(localPrefs,userId);}
       }
       // Contacts
       const supaContacts=await dbLoadContacts(userId);
-      if(supaContacts&&supaContacts.length>0)setContacts(supaContacts);
-    }catch(e){console.error("Supabase sync failed:",e);}
+      if(supaContacts&&supaContacts.length>0){console.log('[SYNC] using Supabase contacts', { count: supaContacts.length });setContacts(supaContacts);}
+      console.log('[SYNC] sync complete');
+    }catch(e){console.error("[SYNC] ERROR:",e);}
   };
 
   useEffect(()=>{
@@ -294,14 +304,28 @@ export default function Aster(){
     const initAuth=async()=>{
       const u=await getUser();
       console.log('[AUTH] initAuth', { userId: u?.id, email: u?.email });
-      if(u){setUser(u);await dbEnsureUser(u);await syncAndLoad(u.id);}
+      if(u){
+        setUser(u);
+        await dbEnsureUser(u);
+        await syncAndLoad(u.id);
+      }
     };
     initAuth();
-    const{data:{subscription}}=supabase.auth.onAuthStateChange(async(_event,session)=>{
+    const{data:{subscription}}=supabase.auth.onAuthStateChange(async(event,session)=>{
       const u=session?.user??null;
-      console.log('[AUTH] onAuthStateChange', { event: _event, userId: u?.id, email: u?.email });
+      console.log('[AUTH] onAuthStateChange', { event, userId: u?.id, email: u?.email });
       setUser(u);
-      if(u){await dbEnsureUser(u);await syncAndLoad(u.id);}
+      if(event==='SIGNED_IN'&&u){
+        // Reset sync guard so fresh sign-in always syncs
+        console.log('[AUTH] SIGNED_IN — resetting syncedRef and running sync');
+        syncedRef.current=false;
+        await dbEnsureUser(u);
+        await syncAndLoad(u.id);
+      }else if(u&&!syncedRef.current){
+        // Other events (TOKEN_REFRESHED, etc) — sync only if not yet synced
+        await dbEnsureUser(u);
+        await syncAndLoad(u.id);
+      }
     });
     return()=>subscription.unsubscribe();
   },[]);
