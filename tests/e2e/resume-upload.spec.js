@@ -13,8 +13,7 @@ test.describe('Resume File Upload', () => {
     // Upload via hidden file input
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles(path.join(__dirname, '..', 'fixtures', 'resumes', 'short_resume.txt'));
-    // Mock parse-resume returns text → "Resume loaded" toast should appear
-    // After parse, it navigates to email step
+    // Mock parse-resume returns text → navigates to sign-in step
     await expect(page.getByText('Save your data across devices')).toBeVisible({ timeout: 10000 });
   });
 
@@ -24,7 +23,7 @@ test.describe('Resume File Upload', () => {
     await page.getByText('Get started').click();
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles(path.join(__dirname, '..', 'fixtures', 'resumes', 'short_resume.txt'));
-    // After upload, wait for email step (inference runs in background)
+    // After upload, wait for sign-in step (inference runs in background)
     await expect(page.getByText('Save your data across devices')).toBeVisible({ timeout: 10000 });
     // Verify inferred prefs were saved to localStorage
     const prefs = await page.evaluate(() => JSON.parse(localStorage.getItem('aster_prefs') || '{}'));

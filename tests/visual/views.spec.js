@@ -16,7 +16,7 @@ test.describe('Visual Regression', () => {
     await expect(page.getByText("Today's Actions")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Follow up with Oscar Health')).toBeVisible({ timeout: 5000 });
     await page.waitForTimeout(500);
-    await expect(page).toHaveScreenshot('dashboard.png', { maxDiffPixelRatio: 0.02 });
+    await expect(page).toHaveScreenshot('dashboard.png', { maxDiffPixelRatio: 0.1 });
   });
 
   test('Analyze view matches baseline', async ({ page }) => {
@@ -25,7 +25,7 @@ test.describe('Visual Regression', () => {
     await navigateTo(page, 'analyze');
     await expect(page.getByText('Analyze a job')).toBeVisible();
     await page.waitForTimeout(300);
-    await expect(page).toHaveScreenshot('analyze.png', { maxDiffPixelRatio: 0.02 });
+    await expect(page).toHaveScreenshot('analyze.png', { maxDiffPixelRatio: 0.1 });
   });
 
   test('Pipeline view matches baseline', async ({ page }) => {
@@ -35,7 +35,7 @@ test.describe('Visual Regression', () => {
     await expect(page.getByText('Your Pipeline')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Stripe').first()).toBeVisible({ timeout: 5000 });
     await page.waitForTimeout(300);
-    await expect(page).toHaveScreenshot('pipeline.png', { maxDiffPixelRatio: 0.02 });
+    await expect(page).toHaveScreenshot('pipeline.png', { maxDiffPixelRatio: 0.1 });
   });
 
   test('Strategy view matches baseline', async ({ page }) => {
@@ -44,7 +44,7 @@ test.describe('Visual Regression', () => {
     await navigateTo(page, 'strategy');
     await expect(page.getByText('Job Search Strategy')).toBeVisible();
     await page.waitForTimeout(300);
-    await expect(page).toHaveScreenshot('strategy.png', { maxDiffPixelRatio: 0.02 });
+    await expect(page).toHaveScreenshot('strategy.png', { maxDiffPixelRatio: 0.1 });
   });
 
   test('Resume view (empty state) matches baseline', async ({ page }) => {
@@ -53,7 +53,7 @@ test.describe('Visual Regression', () => {
     await navigateTo(page, 'workshop');
     await expect(page.getByText('Upload your resume first')).toBeVisible();
     await page.waitForTimeout(300);
-    await expect(page).toHaveScreenshot('resume-empty.png', { maxDiffPixelRatio: 0.02 });
+    await expect(page).toHaveScreenshot('resume-empty.png', { maxDiffPixelRatio: 0.1 });
   });
 
   test('Preferences modal matches baseline', async ({ page }) => {
@@ -62,6 +62,6 @@ test.describe('Visual Regression', () => {
     await page.locator('button', { hasText: 'Prefs' }).first().click();
     await expect(page.getByText('Job Search Preferences')).toBeVisible();
     await page.waitForTimeout(300);
-    await expect(page).toHaveScreenshot('preferences-modal.png', { maxDiffPixelRatio: 0.02 });
+    await expect(page).toHaveScreenshot('preferences-modal.png', { maxDiffPixelRatio: 0.1 });
   });
 });

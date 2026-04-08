@@ -3,6 +3,12 @@ import { setupStorage } from '../helpers/setup-storage.js';
 import { navigateTo } from '../helpers/navigate-to.js';
 import { mockAllApiRoutes } from '../helpers/mock-api.js';
 
+// Helper: dismiss auth modal if it appears after save (user not signed in)
+async function dismissAuthIfNeeded(page) {
+  const authVisible = await page.getByText('Continue without account').isVisible({ timeout: 2000 }).catch(() => false);
+  if (authVisible) await page.getByText('Continue without account').click();
+}
+
 const SAMPLE_JD = `We are looking for a Senior Software Engineer to join our platform team. You will design and build scalable APIs, work with distributed systems, and collaborate with product managers to ship features that serve millions of users. Requirements: 5+ years of software engineering experience, strong knowledge of Python or Go, experience with cloud infrastructure (AWS/GCP), familiarity with CI/CD pipelines. Nice to have: experience with Kubernetes, observability tools, API gateway design. We offer competitive compensation, equity, remote work, and unlimited PTO.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -224,10 +230,8 @@ test.describe('4. State transitions', () => {
     await page.locator('input[placeholder="e.g. Acme Corp"]').fill('TestCo');
     await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('Engineer');
     await page.getByRole('button', { name: /Analyze with Aster/i }).click();
-    // Error toast — either "Analysis failed" or "Could not parse AI response"
-    const errorVisible = await page.getByText('Analysis failed').isVisible({ timeout: 5000 }).catch(() => false) ||
-      await page.getByText('Could not parse AI response').isVisible({ timeout: 5000 }).catch(() => false);
-    expect(errorVisible).toBe(true);
+    // Error toast
+    await expect(page.getByText(/Analysis failed|Could not parse/)).toBeVisible({ timeout: 10000 });
   });
 
   test('Pipeline: job saved → appears immediately', async ({ page }) => {
@@ -241,6 +245,8 @@ test.describe('4. State transitions', () => {
     await expect(page.getByText('Apply with Tailoring')).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: 'Applied', exact: true }).click();
     await page.getByRole('button', { name: /Save to pipeline/i }).click();
+    await dismissAuthIfNeeded(page);
+    await expect(page.getByText(/saved locally|saved as/i).first()).toBeVisible({ timeout: 5000 });
     await navigateTo(page, 'pipeline');
     await expect(page.getByText('NewCo').first()).toBeVisible({ timeout: 10000 });
   });
@@ -271,9 +277,9 @@ test.describe('4. State transitions', () => {
     await expect(page.getByText('Apply with Tailoring')).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: 'Applied', exact: true }).click();
     await page.getByRole('button', { name: /Save to pipeline/i }).click();
-    // Go to dashboard
+    await dismissAuthIfNeeded(page);
+    await expect(page.getByText(/saved locally|saved as/i).first()).toBeVisible({ timeout: 5000 });
     await navigateTo(page, 'dashboard');
-    // Tracked should show 1
     await expect(page.getByText('1').first()).toBeVisible();
   });
 });
@@ -370,7 +376,8 @@ test.describe('6. Persistence', () => {
     await expect(page.getByText('Apply with Tailoring')).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: 'Applied', exact: true }).click();
     await page.getByRole('button', { name: /Save to pipeline/i }).click();
-    // Refresh and verify persistence
+    await dismissAuthIfNeeded(page);
+    await expect(page.getByText(/saved locally|saved as/i).first()).toBeVisible({ timeout: 5000 });
     await page.reload();
     await page.waitForLoadState('domcontentloaded');
     // After reload, navigate to pipeline — job should be in localStorage
@@ -618,7 +625,8 @@ test.describe('10. Feedback widget and new features', () => {
     await privacyLink.scrollIntoViewIfNeeded();
     await expect(privacyLink).toBeVisible();
     await privacyLink.click();
-    await expect(page.getByText('Privacy Policy')).toBeVisible();
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.getByText('Privacy Policy').first()).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('What we collect')).toBeVisible();
   });
 });
