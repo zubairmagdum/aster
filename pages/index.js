@@ -3,7 +3,7 @@ import Head from "next/head";
 import { T, STATUS_CFG, STATUSES, DEFAULT_PREFS, getWeekKey, checkHardSkip, updateProfile, matchScore, topProfileTags, parseCSVData, parseBulkData, safeParseClaudeResponse, checkDuplicate } from "../lib/utils";
 import { Analytics } from "../lib/analytics";
 import { supabase, getUser, signOut, signInWithGoogle } from "../lib/supabase";
-import { dbSaveJob, dbSaveAllJobs, dbLoadJobs, dbDeleteJob, dbSaveResume, dbLoadResume, dbSavePrefs, dbLoadPrefs, dbSaveContact, dbLoadContacts, dbEnsureUser, dbSubmitRating, dbSubmitFeedback, dbSaveStrategy, dbLoadStrategy } from "../lib/db";
+import { dbSaveJob, dbSaveAllJobs, dbLoadJobs, dbDeleteJob, dbSaveResume, dbLoadResume, dbSavePrefs, dbLoadPrefs, dbSaveContact, dbLoadContacts, dbEnsureUser, dbSubmitRating, dbSubmitFeedback, dbSaveStrategy, dbLoadStrategy, dbSubscribeEmail } from "../lib/db";
 import AuthModal from "../components/AuthModal";
 import { initPosthog, ph } from "../lib/posthog";
 const RADIUS={sm:8,md:14,lg:20,xl:28,pill:999};
@@ -862,6 +862,22 @@ function DashboardView({jobs,contacts,profile,resumeText,setView,setActiveJobId,
   );
 }
 
+// ─── EMAIL CAPTURE ────────────────────────────────────────────────────────────
+function EmailCapture(){
+  const [subEmail,setSubEmail]=useState("");
+  const [subscribed,setSubscribed]=useState(false);
+  if(subscribed)return<div style={{marginTop:16,fontSize:12,color:T.sage,textAlign:"center"}}>You're in! We'll keep you posted.</div>;
+  return(
+    <div style={{marginTop:20,padding:"14px 16px",background:T.cream,borderRadius:RADIUS.md,border:`1px solid ${T.cream3}`}}>
+      <div style={{fontSize:12,color:T.gray,marginBottom:8}}>Want updates on new features?</div>
+      <div style={{display:"flex",gap:8}}>
+        <input type="email" value={subEmail} onChange={e=>setSubEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&subEmail.includes('@')&&(dbSubscribeEmail(subEmail),setSubscribed(true))} placeholder="you@email.com" style={{flex:1,padding:"8px 12px",fontSize:13,border:`1.5px solid ${T.cream3}`,borderRadius:RADIUS.pill,outline:"none",background:T.white,color:T.charcoal}}/>
+        <button onClick={()=>{if(!subEmail.includes('@'))return;dbSubscribeEmail(subEmail);setSubscribed(true);}} style={{background:T.forest,color:T.white,border:"none",borderRadius:RADIUS.pill,padding:"8px 18px",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>Subscribe</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── ANALYZE VIEW ─────────────────────────────────────────────────────────────
 function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobId,toast_,onResumeUploaded,user,onAuthRequired}){
   const analyzeFileRef=useRef();
@@ -997,6 +1013,7 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
         <button className="btn-primary" onClick={analyze} disabled={loading||!jd.trim()} style={{width:"100%",fontSize:14,padding:"13px"}}>
           {loading?<span style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><Spinner/>Analyzing...</span>:"✦ Analyze with Aster AI"}
         </button>
+        {isFirstVisit&&<EmailCapture/>}
       </div>
 
       {/* Results */}
