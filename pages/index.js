@@ -184,6 +184,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
   .score-ring span{font-size:13px !important;}
   .dashboard-stats{grid-template-columns:repeat(2,1fr) !important;}
   .dashboard-panels{grid-template-columns:1fr !important;}
+  .feedback-btn{bottom:80px !important;}
+  .feedback-panel{bottom:120px !important;width:calc(100vw - 48px) !important;max-width:320px !important;}
 }
 `;
 
@@ -635,9 +637,9 @@ function FeedbackWidget({userId,currentView,toast_}){
   };
   return(
     <>
-      <button onClick={()=>setOpen(v=>!v)} style={{position:"fixed",bottom:24,right:24,zIndex:200,background:T.sage,color:T.white,border:"none",borderRadius:RADIUS.pill,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",boxShadow:SHADOW.md,display:"flex",alignItems:"center",gap:5}}>💬 Feedback</button>
+      <button className="feedback-btn" onClick={()=>setOpen(v=>!v)} style={{position:"fixed",bottom:24,right:24,zIndex:200,background:T.sage,color:T.white,border:"none",borderRadius:RADIUS.pill,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",boxShadow:SHADOW.md,display:"flex",alignItems:"center",gap:5}}>💬 Feedback</button>
       {open&&(
-        <div style={{position:"fixed",bottom:64,right:24,zIndex:200,background:T.white,borderRadius:RADIUS.lg,padding:"20px",width:320,boxShadow:SHADOW.xl,border:`1px solid ${T.cream2}`}}>
+        <div className="feedback-panel" style={{position:"fixed",bottom:64,right:24,zIndex:200,background:T.white,borderRadius:RADIUS.lg,padding:"20px",width:320,boxShadow:SHADOW.xl,border:`1px solid ${T.cream2}`}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <span style={{fontWeight:600,fontSize:14,color:T.charcoal}}>Share feedback</span>
             <button onClick={()=>setOpen(false)} style={{background:"none",border:"none",fontSize:16,color:T.gray3,cursor:"pointer"}}>✕</button>
