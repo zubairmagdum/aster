@@ -468,6 +468,7 @@ export default function Aster(){
         <p style={{fontSize:11,color:T.gray3,lineHeight:1.7}}>
           ✦ Aster — Your resume stays private. Your data is never sold.{" "}
           <a href="/privacy" style={{color:T.gray3,fontSize:11,marginRight:8}}>Privacy Policy</a>
+          <a href="mailto:zubair@astercopilot.com" style={{color:T.gray3,fontSize:11,marginRight:8}}>Contact</a>
           <button onClick={()=>{if(window.confirm("Delete all your Aster data?")){localStorage.clear();window.location.reload();}}} style={{color:T.rose,background:"none",border:"none",cursor:"pointer",fontSize:11}}>Delete my workspace</button>
         </p>
       </footer>
