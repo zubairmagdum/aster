@@ -63,8 +63,11 @@ export default function AuthModal({ onClose }) {
             <div style={{ textAlign: "center", padding: "20px 0" }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>✉</div>
               <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 600, color: T.charcoal, marginBottom: 8 }}>Check your email</div>
-              <p style={{ fontSize: 13, color: T.gray, lineHeight: 1.6, marginBottom: 20 }}>
+              <p style={{ fontSize: 13, color: T.gray, lineHeight: 1.6, marginBottom: 12 }}>
                 We sent a sign-in link to <strong>{email}</strong>. Click it to sign in — it expires in 1 hour.
+              </p>
+              <p style={{ fontSize: 11, color: T.gray2, lineHeight: 1.5, marginBottom: 20, padding: "8px 12px", background: "rgba(74,124,89,0.06)", borderRadius: 8 }}>
+                Open the link in <strong>this browser</strong> for it to work. Check your inbox for an email from noreply@mail.app.supabase.io
               </p>
               <button
                 onClick={onClose}

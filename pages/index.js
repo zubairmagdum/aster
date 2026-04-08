@@ -3,7 +3,7 @@ import Head from "next/head";
 import { T, STATUS_CFG, STATUSES, DEFAULT_PREFS, getWeekKey, checkHardSkip, updateProfile, matchScore, topProfileTags, parseCSVData, parseBulkData, safeParseClaudeResponse, checkDuplicate } from "../lib/utils";
 import { Analytics } from "../lib/analytics";
 import { supabase, getUser, signOut } from "../lib/supabase";
-import { dbSaveJob, dbSaveAllJobs, dbLoadJobs, dbDeleteJob, dbSaveResume, dbLoadResume, dbSavePrefs, dbLoadPrefs, dbEnsureUser } from "../lib/db";
+import { dbSaveJob, dbSaveAllJobs, dbLoadJobs, dbDeleteJob, dbSaveResume, dbLoadResume, dbSavePrefs, dbLoadPrefs, dbSaveContact, dbLoadContacts, dbEnsureUser } from "../lib/db";
 import AuthModal from "../components/AuthModal";
 const RADIUS={sm:8,md:14,lg:20,xl:28,pill:999};
 const SHADOW={sm:"0 1px 4px rgba(28,28,28,0.06)",md:"0 4px 16px rgba(28,28,28,0.08)",lg:"0 8px 32px rgba(28,28,28,0.1)",xl:"0 16px 56px rgba(28,28,28,0.12)"};
@@ -252,51 +252,51 @@ export default function Aster(){
   // Supabase auth session check and data sync
   const syncedRef=useRef(false);
 
-  const syncLocalToSupabase=async(userId)=>{
+  const syncAndLoad=async(userId)=>{
     if(syncedRef.current)return;
     syncedRef.current=true;
     try{
-      const localJobs=Store.get("aster_jobs",[]);
-      if(localJobs.length>0)await dbSaveAllJobs(localJobs,userId);
-      const localResume=Store.get("aster_resume","");
-      const localResumeName=Store.get("aster_resume_name","");
-      if(localResume)await dbSaveResume(localResume,localResumeName,userId);
-      const localPrefs=Store.get("aster_prefs",null);
-      if(localPrefs)await dbSavePrefs(localPrefs,userId);
-    }catch(e){console.error("Sync to Supabase failed:",e);}
-  };
-
-  const loadFromSupabase=async(userId)=>{
-    const dbJobs=await dbLoadJobs(userId);
-    if(dbJobs&&dbJobs.length>0)setJobs(dbJobs);
-    const dbResume=await dbLoadResume(userId);
-    if(dbResume?.text){setResumeText(dbResume.text);setResumeFileName(dbResume.name||"");}
-    const dbPrefs=await dbLoadPrefs(userId);
-    if(dbPrefs)setPrefs(p=>({...DEFAULT_PREFS,...p,...dbPrefs}));
+      // Load from Supabase first — if it has data, Supabase is source of truth
+      const supaJobs=await dbLoadJobs(userId);
+      if(supaJobs&&supaJobs.length>0){
+        setJobs(supaJobs);
+      }else{
+        // Supabase is empty — sync localStorage up
+        const localJobs=Store.get("aster_jobs",[]);
+        if(localJobs.length>0)await dbSaveAllJobs(localJobs,userId);
+      }
+      const supaResume=await dbLoadResume(userId);
+      if(supaResume?.text){
+        setResumeText(supaResume.text);setResumeFileName(supaResume.name||"");
+      }else{
+        const localResume=Store.get("aster_resume","");
+        const localResumeName=Store.get("aster_resume_name","");
+        if(localResume)await dbSaveResume(localResume,localResumeName,userId);
+      }
+      const supaPrefs=await dbLoadPrefs(userId);
+      if(supaPrefs){
+        setPrefs(p=>({...DEFAULT_PREFS,...p,...supaPrefs}));
+      }else{
+        const localPrefs=Store.get("aster_prefs",null);
+        if(localPrefs)await dbSavePrefs(localPrefs,userId);
+      }
+      // Contacts
+      const supaContacts=await dbLoadContacts(userId);
+      if(supaContacts&&supaContacts.length>0)setContacts(supaContacts);
+    }catch(e){console.error("Supabase sync failed:",e);}
   };
 
   useEffect(()=>{
     if(!supabase)return;
     const initAuth=async()=>{
       const u=await getUser();
-      if(u){
-        setUser(u);
-        await dbEnsureUser(u);
-        // First sync localStorage up, then load from Supabase (Supabase wins)
-        await syncLocalToSupabase(u.id);
-        await loadFromSupabase(u.id);
-      }
+      if(u){setUser(u);await dbEnsureUser(u);await syncAndLoad(u.id);}
     };
     initAuth();
     const{data:{subscription}}=supabase.auth.onAuthStateChange(async(_event,session)=>{
       const u=session?.user??null;
       setUser(u);
-      if(u){
-        await dbEnsureUser(u);
-        // Sync localStorage up on first sign-in, then load Supabase data
-        await syncLocalToSupabase(u.id);
-        await loadFromSupabase(u.id);
-      }
+      if(u){await dbEnsureUser(u);await syncAndLoad(u.id);}
     });
     return()=>subscription.unsubscribe();
   },[]);
@@ -1046,7 +1046,7 @@ function PipelineView({jobs,contacts,updateJob,removeJob,setJobs,setView,setActi
 
   return(
     <div className="fade-up">
-      {showImport&&<ImportHistoryModal onClose={()=>setShowImport(false)} setJobs={setJobs} toast_={toast_}/>}
+      {showImport&&<ImportHistoryModal onClose={()=>setShowImport(false)} setJobs={setJobs} toast_={toast_} userId={user?.id}/>}
       {/* Interview Prep Modal */}
       {prepJobId&&(
         <div style={{position:"fixed",inset:0,zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(28,28,28,0.4)"}}>
@@ -1293,7 +1293,7 @@ function OutreachView({jobs,contacts,setContacts,resumeText,activeJob,setActiveJ
 }
 
 // ─── IMPORT HISTORY MODAL ─────────────────────────────────────────────────────
-function ImportHistoryModal({onClose,setJobs,toast_}){
+function ImportHistoryModal({onClose,setJobs,toast_,userId}){
   const [tab,setTab]=useState("csv");
   const [csv,setCsv]=useState("");
   const [parsed,setParsed]=useState([]);
@@ -1310,6 +1310,7 @@ function ImportHistoryModal({onClose,setJobs,toast_}){
     const existingJobs=Store.get("aster_jobs",[]);
     Store.set("aster_jobs",[...newJobs,...existingJobs]);
     setJobs(prev=>[...newJobs,...prev]);
+    if(userId)dbSaveAllJobs(newJobs,userId);
     toast_(`Imported ${newJobs.length} jobs to pipeline`);
     onClose();
   };
@@ -1321,6 +1322,7 @@ function ImportHistoryModal({onClose,setJobs,toast_}){
     const existingJobs=Store.get("aster_jobs",[]);
     Store.set("aster_jobs",[...newJobs,...existingJobs]);
     setJobs(prev=>[...newJobs,...prev]);
+    if(userId)dbSaveAllJobs(newJobs,userId);
     toast_(`Imported ${newJobs.length} jobs to pipeline`);
     onClose();
   };
@@ -1334,6 +1336,7 @@ function ImportHistoryModal({onClose,setJobs,toast_}){
     const existingJobs=Store.get("aster_jobs",[]);
     Store.set("aster_jobs",[...newJobs,...existingJobs]);
     setJobs(prev=>[...newJobs,...prev]);
+    if(userId)dbSaveAllJobs(newJobs,userId);
     toast_(`Imported ${newJobs.length} jobs to pipeline`);
     onClose();
   };
