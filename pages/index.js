@@ -250,6 +250,31 @@ export default function Aster(){
   useEffect(()=>{if(_storageQuotaError){_storageQuotaError=false;setToast({msg:"Storage full — clear some applications to continue",type:"err"});}},[jobs,contacts,profile,prefs]);
 
   // Supabase auth session check and data sync
+  const syncedRef=useRef(false);
+
+  const syncLocalToSupabase=async(userId)=>{
+    if(syncedRef.current)return;
+    syncedRef.current=true;
+    try{
+      const localJobs=Store.get("aster_jobs",[]);
+      if(localJobs.length>0)await dbSaveAllJobs(localJobs,userId);
+      const localResume=Store.get("aster_resume","");
+      const localResumeName=Store.get("aster_resume_name","");
+      if(localResume)await dbSaveResume(localResume,localResumeName,userId);
+      const localPrefs=Store.get("aster_prefs",null);
+      if(localPrefs)await dbSavePrefs(localPrefs,userId);
+    }catch(e){console.error("Sync to Supabase failed:",e);}
+  };
+
+  const loadFromSupabase=async(userId)=>{
+    const dbJobs=await dbLoadJobs(userId);
+    if(dbJobs&&dbJobs.length>0)setJobs(dbJobs);
+    const dbResume=await dbLoadResume(userId);
+    if(dbResume?.text){setResumeText(dbResume.text);setResumeFileName(dbResume.name||"");}
+    const dbPrefs=await dbLoadPrefs(userId);
+    if(dbPrefs)setPrefs(p=>({...DEFAULT_PREFS,...p,...dbPrefs}));
+  };
+
   useEffect(()=>{
     if(!supabase)return;
     const initAuth=async()=>{
@@ -257,13 +282,9 @@ export default function Aster(){
       if(u){
         setUser(u);
         await dbEnsureUser(u);
-        // Load data from Supabase, fall back to localStorage
-        const dbJobs=await dbLoadJobs(u.id);
-        if(dbJobs&&dbJobs.length>0)setJobs(dbJobs);
-        const dbResume=await dbLoadResume(u.id);
-        if(dbResume?.text){setResumeText(dbResume.text);setResumeFileName(dbResume.name||"");}
-        const dbPrefs=await dbLoadPrefs(u.id);
-        if(dbPrefs)setPrefs(p=>({...DEFAULT_PREFS,...p,...dbPrefs}));
+        // First sync localStorage up, then load from Supabase (Supabase wins)
+        await syncLocalToSupabase(u.id);
+        await loadFromSupabase(u.id);
       }
     };
     initAuth();
@@ -272,14 +293,9 @@ export default function Aster(){
       setUser(u);
       if(u){
         await dbEnsureUser(u);
-        // Sync localStorage data up to Supabase on first sign-in
-        const localJobs=Store.get("aster_jobs",[]);
-        if(localJobs.length>0)await dbSaveAllJobs(localJobs,u.id);
-        const localResume=Store.get("aster_resume","");
-        const localResumeName=Store.get("aster_resume_name","");
-        if(localResume)await dbSaveResume(localResume,localResumeName,u.id);
-        const localPrefs=Store.get("aster_prefs",null);
-        if(localPrefs)await dbSavePrefs(localPrefs,u.id);
+        // Sync localStorage up on first sign-in, then load Supabase data
+        await syncLocalToSupabase(u.id);
+        await loadFromSupabase(u.id);
       }
     });
     return()=>subscription.unsubscribe();
