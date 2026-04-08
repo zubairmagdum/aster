@@ -253,16 +253,19 @@ export default function Aster(){
   const syncedRef=useRef(false);
 
   const syncAndLoad=async(userId)=>{
-    if(syncedRef.current)return;
+    if(syncedRef.current){console.log('[SYNC] already synced, skipping');return;}
     syncedRef.current=true;
+    console.log('[SYNC] starting sync for user', userId);
     try{
       // Load from Supabase first — if it has data, Supabase is source of truth
       const supaJobs=await dbLoadJobs(userId);
       if(supaJobs&&supaJobs.length>0){
+        console.log('[SYNC] using Supabase jobs', { count: supaJobs.length });
         setJobs(supaJobs);
       }else{
         // Supabase is empty — sync localStorage up
         const localJobs=Store.get("aster_jobs",[]);
+        console.log('[SYNC] Supabase empty, syncing localStorage up', { localJobCount: localJobs.length });
         if(localJobs.length>0)await dbSaveAllJobs(localJobs,userId);
       }
       const supaResume=await dbLoadResume(userId);
@@ -290,11 +293,13 @@ export default function Aster(){
     if(!supabase)return;
     const initAuth=async()=>{
       const u=await getUser();
+      console.log('[AUTH] initAuth', { userId: u?.id, email: u?.email });
       if(u){setUser(u);await dbEnsureUser(u);await syncAndLoad(u.id);}
     };
     initAuth();
     const{data:{subscription}}=supabase.auth.onAuthStateChange(async(_event,session)=>{
       const u=session?.user??null;
+      console.log('[AUTH] onAuthStateChange', { event: _event, userId: u?.id, email: u?.email });
       setUser(u);
       if(u){await dbEnsureUser(u);await syncAndLoad(u.id);}
     });
@@ -387,7 +392,7 @@ export default function Aster(){
           {[["dashboard","Dashboard"],["analyze","Analyze"],["pipeline","Pipeline"],["outreach","Outreach"],["strategy","Strategy"],["workshop","Resume"]].map(([id,label])=>(
             <button key={id} className="nav-pill" onClick={()=>setView(id)} style={{background:view===id?T.forest:"transparent",color:view===id?T.white:T.gray,fontWeight:view===id?600:400,display:"flex",alignItems:"center",gap:4}}>
               {label}
-              {id==="workshop"&&<span style={{width:6,height:6,borderRadius:"50%",background:resumeText?T.sage:T.gold,display:"inline-block"}}/>}
+              {id==="workshop"&&<span style={{width:6,height:6,borderRadius:"50%",background:resumeText&&resumeText.trim().length>100?T.sage:T.gold,display:"inline-block"}}/>}
             </button>
           ))}
         </div>

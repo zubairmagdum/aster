@@ -21,14 +21,26 @@ export default function AuthModal({ onClose }) {
     setLoading(true);
     setError('');
     const { error: err } = await signInWithMagicLink(email);
-    if (err) { setError(err.message || 'Something went wrong'); setLoading(false); return; }
+    if (err) {
+      const msg = (err.message || '').toLowerCase();
+      if (msg.includes('rate') || msg.includes('limit') || msg.includes('too many')) {
+        setError('Too many sign-in attempts. Please wait 60 seconds before trying again.');
+      } else {
+        setError(err.message || 'Something went wrong');
+      }
+      setLoading(false);
+      return;
+    }
     setSent(true);
     setLoading(false);
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 600, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(28,28,28,0.4)" }}>
-      <div style={{ background: T.white, borderRadius: RADIUS.xl, padding: "36px", width: 420, boxShadow: SHADOW.xl }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 600, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(28,28,28,0.4)" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: T.white, borderRadius: RADIUS.xl, padding: "36px", width: 420, boxShadow: SHADOW.xl, position: "relative" }}>
+        {/* Close button */}
+        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 20, background: "none", border: "none", fontSize: 20, color: T.gray3, cursor: "pointer", padding: "4px" }}>✕</button>
+
         {!sent ? (
           <>
             <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 600, color: T.charcoal, marginBottom: 6 }}>Sign in to Aster</div>
@@ -41,9 +53,9 @@ export default function AuthModal({ onClose }) {
               onChange={e => setEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
               placeholder="you@email.com"
-              style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: `1.5px solid ${T.cream3}`, borderRadius: RADIUS.md, outline: "none", background: T.cream, color: T.charcoal, marginBottom: 12 }}
+              style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: `1.5px solid ${T.cream3}`, borderRadius: RADIUS.md, outline: "none", background: T.cream, color: T.charcoal, marginBottom: 12, boxSizing: "border-box" }}
             />
-            {error && <div style={{ fontSize: 12, color: T.rose, marginBottom: 10 }}>{error}</div>}
+            {error && <div style={{ fontSize: 12, color: T.rose, marginBottom: 10, lineHeight: 1.5 }}>{error}</div>}
             <button
               onClick={handleSubmit}
               disabled={loading}
