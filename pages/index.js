@@ -421,7 +421,7 @@ export default function Aster(){
           {[["dashboard","Dashboard"],["analyze","Analyze"],["pipeline","Pipeline"],["outreach","Outreach"],["strategy","Strategy"],["workshop","Resume"]].map(([id,label])=>(
             <button key={id} className="nav-pill" onClick={()=>setView(id)} style={{background:view===id?T.forest:"transparent",color:view===id?T.white:T.gray,fontWeight:view===id?600:400,display:"flex",alignItems:"center",gap:4}}>
               {label}
-              {id==="workshop"&&<span style={{width:6,height:6,borderRadius:"50%",background:resumeText&&resumeText.trim().length>100?T.sage:T.gold,display:"inline-block"}}/>}
+              {id==="workshop"&&resumeText&&resumeText.trim().length>10&&<span style={{width:6,height:6,borderRadius:"50%",background:resumeLost?T.gold:T.sage,display:"inline-block"}}/>}
             </button>
           ))}
         </div>
