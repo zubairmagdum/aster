@@ -256,10 +256,12 @@ export default function Aster(){
 
   // Supabase auth session check and data sync
   const syncedRef=useRef(false);
+  const lastSyncedUserIdRef=useRef(null);
 
   const syncAndLoad=async(userId)=>{
-    if(syncedRef.current)return;
+    if(syncedRef.current&&lastSyncedUserIdRef.current===userId)return;
     syncedRef.current=true;
+    lastSyncedUserIdRef.current=userId;
     try{
       const supaJobs=await dbLoadJobs(userId);
       if(supaJobs&&supaJobs.length>0){
@@ -311,13 +313,15 @@ export default function Aster(){
       setUser(u);
       if(event==='SIGNED_IN'&&u){
         syncedRef.current=false;
+        lastSyncedUserIdRef.current=null;
         ph.identify(u.id,{email:u.email});
         ph.capture('sign_in_completed',{method:u.app_metadata?.provider||'magic_link'});
         await dbEnsureUser(u);
         await syncAndLoad(u.id);
-        if(pendingJobRef.current){
-          const pj=pendingJobRef.current;
+        const pj=pendingJobRef.current||Store.get("aster_pending_job",null);
+        if(pj){
           pendingJobRef.current=null;
+          Store.set("aster_pending_job",null);
           addJob(pj);
           toast_(`Signed in! ${pj.company} saved to pipeline.`);
         }
@@ -402,7 +406,7 @@ export default function Aster(){
       <style>{GLOBAL_CSS}</style>
       {toast&&<Toast msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
       {showPrefs&&<PrefsModal prefs={prefs} onSave={savePrefs} onClose={()=>setShowPrefs(false)}/>}
-      {showAuthModal&&<AuthModal onClose={()=>{setShowAuthModal(false);if(pendingJobRef.current&&!user){const pj=pendingJobRef.current;pendingJobRef.current=null;addJob(pj);toast_(`${pj.company} saved locally`);}}}/>}
+      {showAuthModal&&<AuthModal onClose={()=>{setShowAuthModal(false);const pj=pendingJobRef.current;if(pj&&!user){pendingJobRef.current=null;Store.set("aster_pending_job",null);addJob(pj);toast_(`${pj.company} saved locally`);}}}/>}
 
       {/* Nav */}
       <nav style={{background:T.white,borderBottom:`1px solid ${T.cream2}`,padding:"0 32px",height:58,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 0 rgba(28,28,28,0.04)"}}>
@@ -452,7 +456,7 @@ export default function Aster(){
 
       <main style={{maxWidth:1200,margin:"0 auto",padding:"28px 32px"}}>
         {view==="dashboard"&&<DashboardView jobs={jobs} contacts={contacts} profile={profile} resumeText={resumeText} setView={setView} setActiveJobId={setActiveJobId} updateJob={updateJob} toast_={toast_} prefs={prefs} resumeLost={resumeLost} user={user} onSignIn={()=>setShowAuthModal(true)}/>}
-        {view==="analyze"&&<AnalyzeView jobs={jobs} profile={profile} prefs={prefs} resumeText={resumeText} addJob={addJob} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} onResumeUploaded={onResumeUploaded} user={user} onAuthRequired={(pendingJob)=>{pendingJobRef.current=pendingJob;setShowAuthModal(true);}}/>}
+        {view==="analyze"&&<AnalyzeView jobs={jobs} profile={profile} prefs={prefs} resumeText={resumeText} addJob={addJob} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} onResumeUploaded={onResumeUploaded} user={user} onAuthRequired={(pendingJob)=>{pendingJobRef.current=pendingJob;Store.set("aster_pending_job",pendingJob);setShowAuthModal(true);}}/>}
         {view==="pipeline"&&<PipelineView jobs={jobs} contacts={contacts} updateJob={updateJob} removeJob={removeJob} setJobs={setJobs} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} resumeText={resumeText} userId={user?.id}/>}
         {view==="outreach"&&<OutreachView jobs={jobs} contacts={contacts} setContacts={setContacts} resumeText={resumeText} activeJob={activeJob} setActiveJobId={setActiveJobId} toast_={toast_}/>}
         {view==="strategy"&&<StrategyView jobs={jobs} profile={profile} prefs={prefs} userId={user?.id}/>}
@@ -1607,11 +1611,14 @@ function ProofLibrary({toast_,userId}){
   const [proofs,setProofs]=useState(()=>Store.get("aster_proof_library",null));
   const [extracting,setExtracting]=useState(false);
 
-  // Load from Supabase on mount if signed in
+  // Load from Supabase on mount — Supabase wins over stale localStorage
   useEffect(()=>{
     if(!supabase||!userId)return;
     supabase.from("candidate_profiles").select("proof_library").eq("user_id",userId).maybeSingle().then(({data})=>{
-      if(data?.proof_library)setProofs(data.proof_library);
+      if(data?.proof_library&&data.proof_library.length>0){
+        setProofs(data.proof_library);
+        Store.set("aster_proof_library",data.proof_library);
+      }
     });
   },[userId]);
 
