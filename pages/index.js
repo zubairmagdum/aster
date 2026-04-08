@@ -236,6 +236,7 @@ export default function Aster(){
   const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
   const [user,setUser]=useState(null);
   const [showAuthModal,setShowAuthModal]=useState(false);
+  const pendingJobRef=useRef(null);
 
   useEffect(()=>{if(resumeText){Store.set("aster_resume",resumeText);Store.set("aster_resume_name",resumeFileName);Store.set("aster_resume_check",resumeText.slice(0,100));}},[resumeText]);
   // Resume persistence check — detect if resume was lost from localStorage
@@ -322,6 +323,13 @@ export default function Aster(){
         syncedRef.current=false;
         await dbEnsureUser(u);
         await syncAndLoad(u.id);
+        // Auto-save pending job if user just signed in to save
+        if(pendingJobRef.current){
+          const pj=pendingJobRef.current;
+          pendingJobRef.current=null;
+          const j=addJob(pj);
+          toast_(`Signed in! ${pj.company} saved to pipeline.`);
+        }
       }else if(u&&!syncedRef.current){
         // Other events (TOKEN_REFRESHED, etc) — sync only if not yet synced
         await dbEnsureUser(u);
@@ -453,8 +461,8 @@ export default function Aster(){
       )}
 
       <main style={{maxWidth:1200,margin:"0 auto",padding:"28px 32px"}}>
-        {view==="dashboard"&&<DashboardView jobs={jobs} contacts={contacts} profile={profile} resumeText={resumeText} setView={setView} setActiveJobId={setActiveJobId} updateJob={updateJob} toast_={toast_} prefs={prefs} resumeLost={resumeLost}/>}
-        {view==="analyze"&&<AnalyzeView jobs={jobs} profile={profile} prefs={prefs} resumeText={resumeText} addJob={addJob} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} onResumeUploaded={onResumeUploaded}/>}
+        {view==="dashboard"&&<DashboardView jobs={jobs} contacts={contacts} profile={profile} resumeText={resumeText} setView={setView} setActiveJobId={setActiveJobId} updateJob={updateJob} toast_={toast_} prefs={prefs} resumeLost={resumeLost} user={user} onSignIn={()=>setShowAuthModal(true)}/>}
+        {view==="analyze"&&<AnalyzeView jobs={jobs} profile={profile} prefs={prefs} resumeText={resumeText} addJob={addJob} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} onResumeUploaded={onResumeUploaded} user={user} onAuthRequired={(pendingJob)=>{pendingJobRef.current=pendingJob;setShowAuthModal(true);}}/>}
         {view==="pipeline"&&<PipelineView jobs={jobs} contacts={contacts} updateJob={updateJob} removeJob={removeJob} setJobs={setJobs} setView={setView} setActiveJobId={setActiveJobId} toast_={toast_} resumeText={resumeText}/>}
         {view==="outreach"&&<OutreachView jobs={jobs} contacts={contacts} setContacts={setContacts} resumeText={resumeText} activeJob={activeJob} setActiveJobId={setActiveJobId} toast_={toast_}/>}
         {view==="strategy"&&<StrategyView jobs={jobs} profile={profile} prefs={prefs}/>}
@@ -665,7 +673,7 @@ function Onboarding({onComplete,onResumeUploaded,resumeFileName,email,onEmail,in
 }
 
 // ─── DASHBOARD VIEW ───────────────────────────────────────────────────────────
-function DashboardView({jobs,contacts,profile,resumeText,setView,setActiveJobId,updateJob,toast_,prefs,resumeLost}){
+function DashboardView({jobs,contacts,profile,resumeText,setView,setActiveJobId,updateJob,toast_,prefs,resumeLost,user,onSignIn}){
   const [nextActions,setNextActions]=useState(null);
   const [actionsLoading,setActionsLoading]=useState(false);
 
@@ -777,12 +785,18 @@ function DashboardView({jobs,contacts,profile,resumeText,setView,setActiveJobId,
           <button className="btn-ghost" style={{width:"100%",marginTop:14,fontSize:12}} onClick={()=>setView("analyze")}>Analyze a job →</button>
         </div>
       </div>
+      {/* Soft nudge for unsigned users */}
+      {!user&&jobs.length>0&&(
+        <div style={{marginTop:20,padding:"12px 16px",background:"rgba(74,124,89,0.06)",borderRadius:RADIUS.md,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={{fontSize:12,color:T.sage}}>Your {jobs.length} job{jobs.length>1?"s are":" is"} stored locally only. <button onClick={onSignIn} style={{background:"none",border:"none",color:T.forest,fontWeight:600,cursor:"pointer",fontSize:12,textDecoration:"underline"}}>Sign in</button> to save across devices.</span>
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── ANALYZE VIEW ─────────────────────────────────────────────────────────────
-function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobId,toast_,onResumeUploaded}){
+function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobId,toast_,onResumeUploaded,user,onAuthRequired}){
   const analyzeFileRef=useRef();
   const [uploading,setUploading]=useState(false);
   const handleAnalyzeUpload=async(file)=>{if(!file)return;setUploading(true);try{const text=await parseResume(file);onResumeUploaded(text,file.name);}catch{toast_("Could not parse file","err");}setUploading(false);};
@@ -838,7 +852,13 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
 
   const save=()=>{
     if(!company||!role){toast_("Add company and role name first","err");return;}
-    const job=addJob({company,role,status:saveStatus,fitScore:result?.fitScore,matchScore:result?.matchScore,roleDNA:result?.roleDNA,aiAnalysis:result,estimatedCompRange:result?.estimatedCompRange||null,atsScore:result?.atsKeywords?.length||0,notes:"",interestRating:3});
+    const jobData={company,role,status:saveStatus,fitScore:result?.fitScore,matchScore:result?.matchScore,roleDNA:result?.roleDNA,aiAnalysis:result,estimatedCompRange:result?.estimatedCompRange||null,atsScore:result?.atsKeywords?.length||0,notes:"",interestRating:3};
+    if(!user&&onAuthRequired){
+      // User not signed in — prompt auth, save pending job for after sign-in
+      onAuthRequired(jobData);
+      return;
+    }
+    addJob(jobData);
     setSaved(true);
     toast_(`${company} saved as "${saveStatus}" ✦`);
   };
