@@ -1,18 +1,19 @@
-const JS_RENDERED_DOMAINS = [
+const BLOCKED_DOMAINS = [
   'icims.com', 'myworkdayjobs.com', 'taleo.net', 'successfactors.com',
-  'brassring.com', 'apply.omnicell.com', 'ultipro.com', 'paylocity.com',
+  'brassring.com', 'ultipro.com', 'paylocity.com', 'paycomonline.net', 'adp.com',
 ];
 
-const DYNAMIC_ERROR = 'This job board requires a browser to load. Copy the job description from the page and paste it here.';
-const JUNK_ERROR = 'This site loads content dynamically. Paste the job description directly instead.';
+const JUNK_PATTERNS = [
+  '{domain:', 'configs:', 'searchConfig:', 'basePositionFq:',
+  'createElement', 'webpack', 'window.__', '__NEXT_DATA__',
+  'window.__remixContext', '"buildId":', '"props":',
+];
 
-function looksLikeJunkText(text) {
-  if (!text || text.length < 100) return true;
+function isJunkText(text) {
+  if (!text || text.length < 200) return true;
   const braceCount = (text.match(/[{}]/g) || []).length;
-  if (braceCount > 10) return true;
-  const junkPatterns = ['{domain:', 'configs:', 'searchConfig:', 'basePositionFq:', 'window.__NEXT_DATA__', 'window.__remixContext', '"props":', '"buildId":'];
-  if (junkPatterns.some(p => text.includes(p))) return true;
-  // If more than 30% of the text is non-alphabetic, probably not a JD
+  if (braceCount > 5) return true;
+  if (JUNK_PATTERNS.some(p => text.includes(p))) return true;
   const alpha = (text.match(/[a-zA-Z]/g) || []).length;
   if (alpha / text.length < 0.5) return true;
   return false;
@@ -23,17 +24,16 @@ export default async function handler(req, res) {
 
   const { url } = req.body || {};
   if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
-    return res.status(400).json({ success: false, error: 'Invalid URL' });
+    return res.status(400).json({ success: false, error: 'invalid_url', message: 'Enter a valid URL starting with https://' });
   }
 
-  // Block known JS-rendered ATS domains
-  try {
-    const hostname = new URL(url).hostname;
-    if (JS_RENDERED_DOMAINS.some(d => hostname.includes(d))) {
-      return res.json({ success: false, error: DYNAMIC_ERROR });
-    }
-  } catch {
-    return res.status(400).json({ success: false, error: 'Invalid URL' });
+  let hostname;
+  try { hostname = new URL(url).hostname; } catch {
+    return res.status(400).json({ success: false, error: 'invalid_url', message: 'Enter a valid URL' });
+  }
+
+  if (BLOCKED_DOMAINS.some(d => hostname.includes(d))) {
+    return res.json({ success: false, error: 'dynamic_site', message: 'This job board loads content in the browser. Copy the description from the page and paste it here.' });
   }
 
   try {
@@ -49,15 +49,15 @@ export default async function handler(req, res) {
     });
     clearTimeout(timeout);
 
-    if (!response.ok) return res.json({ success: false, error: `HTTP ${response.status}` });
+    if (!response.ok) {
+      return res.json({ success: false, error: 'fetch_failed', message: `The site returned an error (HTTP ${response.status}). Check the link and try again.` });
+    }
 
     const html = await response.text();
-    const hostname = new URL(url).hostname;
 
     let text = '';
     let source = 'generic';
 
-    // Strip script, style, nav, footer, header tags
     const clean = html
       .replace(/<script[\s\S]*?<\/script>/gi, '')
       .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -86,19 +86,16 @@ export default async function handler(req, res) {
 
     text = text.replace(/\n{3,}/g, '\n\n').trim();
 
-    if (!text || text.length < 50) {
-      return res.json({ success: false, error: 'Could not extract job description' });
+    if (isJunkText(text)) {
+      return res.json({ success: false, error: 'no_content', message: "Couldn't find a job description on that page. The site may load content dynamically." });
     }
 
-    // Validate extracted text is a real JD, not JS/JSON junk
-    if (looksLikeJunkText(text)) {
-      return res.json({ success: false, error: JUNK_ERROR });
-    }
-
-    res.json({ success: true, text: text.slice(0, 5000), source });
+    res.json({ success: true, text: text.slice(0, 5000), source, hostname });
   } catch (e) {
-    const msg = e.name === 'AbortError' ? 'Request timed out' : e.message;
-    res.json({ success: false, error: msg });
+    if (e.name === 'AbortError') {
+      return res.json({ success: false, error: 'fetch_failed', message: 'Request timed out. The site may be slow or blocking requests.' });
+    }
+    res.json({ success: false, error: 'fetch_failed', message: "Couldn't reach that URL. Check the link and try again." });
   }
 }
 
@@ -111,9 +108,7 @@ function extractLargestBlock(html) {
   let best = '';
   for (const block of blocks) {
     const text = stripTags(block);
-    if (text.length > best.length && text.length > 100) {
-      best = text;
-    }
+    if (text.length > best.length && text.length > 100) best = text;
   }
   return best || stripTags(html);
 }

@@ -893,6 +893,8 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
   const [urlMode,setUrlMode]=useState(false);
   const [jobUrl,setJobUrl]=useState("");
   const [scraping,setScraping]=useState(false);
+  const [scrapeError,setScrapeError]=useState(null);
+  const [scrapeSuccess,setScrapeSuccess]=useState(null);
   const [company,setCompany]=useState("");
   const [role,setRole]=useState("");
   const [loading,setLoading]=useState(false);
@@ -928,15 +930,20 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
 
   const scrapeUrl=async()=>{
     if(!jobUrl||(!jobUrl.startsWith('http://')&&!jobUrl.startsWith('https://')))return;
-    setScraping(true);
+    setScraping(true);setScrapeError(null);setScrapeSuccess(null);
     try{
       const r=await fetch('/api/scrape',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:jobUrl})});
       const data=await r.json();
-      const hostname=new URL(jobUrl).hostname;
+      let hostname='';try{hostname=new URL(jobUrl).hostname;}catch{}
       ph.capture('url_paste_used',{url:hostname,source:data.source||'unknown',success:!!data.success});
-      if(data.success){handleJdChange(data.text);setUrlMode(false);}
-      else{toast_("Couldn't extract from that URL. Paste the job description directly instead.","err");setUrlMode(false);}
-    }catch{toast_("Failed to fetch URL","err");setUrlMode(false);}
+      if(data.success){
+        handleJdChange(data.text);
+        setUrlMode(false);
+        setScrapeSuccess(`Extracted from ${data.hostname||hostname}. Review below and edit if needed.`);
+      }else{
+        setScrapeError(data.message||"Couldn't extract from that URL.");
+      }
+    }catch{setScrapeError("Couldn't reach that URL. Check the link and try again.");}
     setScraping(false);
   };
 
@@ -1009,14 +1016,28 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
           </div>
         )}
 
-        {urlMode&&(
-          <div style={{display:"flex",gap:8,marginBottom:10}}>
-            <input className="input-base" value={jobUrl} onChange={e=>setJobUrl(e.target.value)} onKeyDown={e=>e.key==='Enter'&&scrapeUrl()} placeholder="https://boards.greenhouse.io/company/jobs/123" style={{flex:1}}/>
-            <button className="btn-primary" onClick={scrapeUrl} disabled={scraping||!jobUrl} style={{padding:"10px 18px",fontSize:13,whiteSpace:"nowrap"}}>{scraping?"Extracting...":"Extract"}</button>
+        {urlMode?(
+          <div style={{marginBottom:10}}>
+            <div style={{display:"flex",gap:8,marginBottom:8}}>
+              <input className="input-base" value={jobUrl} onChange={e=>{setJobUrl(e.target.value);setScrapeError(null);}} onKeyDown={e=>e.key==='Enter'&&scrapeUrl()} placeholder="https://boards.greenhouse.io/company/jobs/123" style={{flex:1}}/>
+              <button className="btn-primary" onClick={scrapeUrl} disabled={scraping||!jobUrl} style={{padding:"10px 18px",fontSize:13,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6}}>{scraping&&<Spinner/>}{scraping?`Extracting...`:"Extract"}</button>
+            </div>
+            {scrapeError&&(
+              <div style={{padding:"12px 16px",background:"#FDF4F3",border:`1px solid ${T.rose3}`,borderRadius:RADIUS.md,marginBottom:8}}>
+                <div style={{fontSize:12,color:T.rose,lineHeight:1.6,marginBottom:8}}>{scrapeError}</div>
+                <button onClick={()=>{setUrlMode(false);setScrapeError(null);}} style={{fontSize:12,color:T.forest,background:"none",border:`1.5px solid ${T.forest}`,borderRadius:RADIUS.pill,padding:"6px 14px",cursor:"pointer"}}>Paste the description instead</button>
+              </div>
+            )}
+          </div>
+        ):(
+          <div>
+            {scrapeSuccess&&(
+              <div style={{padding:"8px 12px",background:"rgba(74,124,89,0.06)",borderRadius:RADIUS.md,fontSize:12,color:T.sage,marginBottom:8,border:`1px solid rgba(74,124,89,0.15)`}}>✓ {scrapeSuccess}</div>
+            )}
+            <textarea className="input-base" value={jd} onChange={e=>{handleJdChange(e.target.value);if(scrapeSuccess)setScrapeSuccess(null);}} placeholder="Paste the full job description here..." style={{minHeight:240,resize:"vertical",lineHeight:1.7,marginBottom:8}}/>
           </div>
         )}
-        {!urlMode&&<textarea className="input-base" value={jd} onChange={e=>handleJdChange(e.target.value)} placeholder="Paste the full job description here..." style={{minHeight:240,resize:"vertical",lineHeight:1.7,marginBottom:8}}/>}
-        <button onClick={()=>setUrlMode(v=>!v)} style={{background:"none",border:"none",color:T.sage,fontSize:12,cursor:"pointer",marginBottom:4,padding:0}}>{urlMode?"Paste the full description instead →":"Have a link? Paste the job URL instead →"}</button>
+        <button onClick={()=>{setUrlMode(v=>!v);setScrapeError(null);setScrapeSuccess(null);}} style={{background:"none",border:"none",color:T.sage,fontSize:12,cursor:"pointer",marginBottom:4,padding:0}}>{urlMode?"Paste the full description instead →":"Have a link? Paste the job URL instead →"}</button>
         {!jd&&!urlMode&&<button onClick={()=>{const sample=`Senior Product Manager — Relay (Series B, $42M raised)\nSan Francisco / Remote · Full-time\n\nAbout the role\nRelay is building the operating system for field service teams. We're looking for a Senior Product Manager to own our core scheduling and dispatch platform — used by 800+ enterprise customers to coordinate 50,000+ technicians daily.\n\nResponsibilities\n- Own the product roadmap for scheduling, dispatch, and route optimization\n- Partner with engineering (team of 8) to ship weekly across web and mobile\n- Drive adoption metrics: activation rate, daily active dispatchers, jobs completed per tech\n- Conduct customer discovery with enterprise ops leaders (15+ calls/month)\n- Define and track KPIs, run A/B experiments, and present insights to leadership\n- Collaborate with design, data science, and sales engineering\n\nRequirements\n- 5+ years of product management experience in B2B SaaS\n- Track record shipping products used by operations or logistics teams\n- Strong SQL skills and comfort with data-driven decision making\n- Experience with cross-functional leadership across engineering, design, and GTM\n- Excellent written and verbal communication\n\nNice to have\n- Experience in field service, logistics, or workforce management\n- Background in scheduling algorithms or optimization\n- Familiarity with mobile-first product design\n- Previous experience at a Series A–C company\n\nCompensation\n$140,000 – $180,000 base + equity + benefits\nUnlimited PTO · Remote-friendly · 401(k) match · Health/dental/vision`;handleJdChange(sample);}} style={{background:"none",border:"none",color:T.sage,fontSize:12,cursor:"pointer",marginBottom:8,padding:0}}>Try a sample JD →</button>}
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
