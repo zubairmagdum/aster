@@ -1018,13 +1018,15 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
 
         {urlMode?(
           <div style={{marginBottom:10}}>
-            <div style={{display:"flex",gap:8,marginBottom:8}}>
+            <div style={{display:"flex",gap:8,marginBottom:6}}>
               <input className="input-base" value={jobUrl} onChange={e=>{setJobUrl(e.target.value);setScrapeError(null);}} onKeyDown={e=>e.key==='Enter'&&scrapeUrl()} placeholder="https://boards.greenhouse.io/company/jobs/123" style={{flex:1}}/>
-              <button className="btn-primary" onClick={scrapeUrl} disabled={scraping||!jobUrl} style={{padding:"10px 18px",fontSize:13,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6}}>{scraping&&<Spinner/>}{scraping?`Extracting...`:"Extract"}</button>
+              <button className="btn-primary" onClick={scrapeUrl} disabled={scraping||!jobUrl} style={{padding:"10px 18px",fontSize:13,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6}}>{scraping&&<Spinner/>}{scraping?"Extracting...":"Extract"}</button>
             </div>
+            {!scrapeError&&<p style={{fontSize:11,color:T.gray2,lineHeight:1.5,marginBottom:8}}>Works best with Greenhouse and Ashby links. LinkedIn, Lever, Indeed, and Workday links can't be extracted automatically. When in doubt, just paste the full job description directly.</p>}
             {scrapeError&&(
               <div style={{padding:"12px 16px",background:"#FDF4F3",border:`1px solid ${T.rose3}`,borderRadius:RADIUS.md,marginBottom:8}}>
-                <div style={{fontSize:12,color:T.rose,lineHeight:1.6,marginBottom:8}}>{scrapeError}</div>
+                <div style={{fontSize:12,color:T.rose,lineHeight:1.6,marginBottom:4}}>{scrapeError}</div>
+                <div style={{fontSize:11,color:T.gray2,lineHeight:1.5,marginBottom:10}}>This feature works best with Greenhouse and Ashby job links. For other sites, paste the description directly.</div>
                 <button onClick={()=>{setUrlMode(false);setScrapeError(null);}} style={{fontSize:12,color:T.forest,background:"none",border:`1.5px solid ${T.forest}`,borderRadius:RADIUS.pill,padding:"6px 14px",cursor:"pointer"}}>Paste the description instead</button>
               </div>
             )}
