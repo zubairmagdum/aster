@@ -1,8 +1,38 @@
+const JS_RENDERED_DOMAINS = [
+  'icims.com', 'myworkdayjobs.com', 'taleo.net', 'successfactors.com',
+  'brassring.com', 'apply.omnicell.com', 'ultipro.com', 'paylocity.com',
+];
+
+const DYNAMIC_ERROR = 'This job board requires a browser to load. Copy the job description from the page and paste it here.';
+const JUNK_ERROR = 'This site loads content dynamically. Paste the job description directly instead.';
+
+function looksLikeJunkText(text) {
+  if (!text || text.length < 100) return true;
+  const braceCount = (text.match(/[{}]/g) || []).length;
+  if (braceCount > 10) return true;
+  const junkPatterns = ['{domain:', 'configs:', 'searchConfig:', 'basePositionFq:', 'window.__NEXT_DATA__', 'window.__remixContext', '"props":', '"buildId":'];
+  if (junkPatterns.some(p => text.includes(p))) return true;
+  // If more than 30% of the text is non-alphabetic, probably not a JD
+  const alpha = (text.match(/[a-zA-Z]/g) || []).length;
+  if (alpha / text.length < 0.5) return true;
+  return false;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const { url } = req.body || {};
   if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+    return res.status(400).json({ success: false, error: 'Invalid URL' });
+  }
+
+  // Block known JS-rendered ATS domains
+  try {
+    const hostname = new URL(url).hostname;
+    if (JS_RENDERED_DOMAINS.some(d => hostname.includes(d))) {
+      return res.json({ success: false, error: DYNAMIC_ERROR });
+    }
+  } catch {
     return res.status(400).json({ success: false, error: 'Invalid URL' });
   }
 
@@ -60,6 +90,11 @@ export default async function handler(req, res) {
       return res.json({ success: false, error: 'Could not extract job description' });
     }
 
+    // Validate extracted text is a real JD, not JS/JSON junk
+    if (looksLikeJunkText(text)) {
+      return res.json({ success: false, error: JUNK_ERROR });
+    }
+
     res.json({ success: true, text: text.slice(0, 5000), source });
   } catch (e) {
     const msg = e.name === 'AbortError' ? 'Request timed out' : e.message;
@@ -72,7 +107,6 @@ function stripTags(html) {
 }
 
 function extractLargestBlock(html) {
-  // Find the largest content block by splitting on common container tags
   const blocks = html.split(/<(?:div|section|article)[^>]*>/i);
   let best = '';
   for (const block of blocks) {
