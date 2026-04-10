@@ -39,7 +39,7 @@ test.describe('API Resilience — Malformed Claude Responses', () => {
     await setupAnalyzeView(page);
     await page.getByRole('button', { name: /Analyze with Aster/i }).click();
     // Should show error toast, not crash
-    await expect(page.getByText(/Could not parse AI response/)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Could not parse|parse analysis/i)).toBeVisible({ timeout: 10000 });
     // Analyze button should re-enable for retry
     await expect(page.getByRole('button', { name: /Analyze with Aster/i })).toBeEnabled({ timeout: 5000 });
     // Page is still functional — no white screen
@@ -104,8 +104,8 @@ test.describe('API Resilience — Malformed Claude Responses', () => {
     });
     await setupAnalyzeView(page);
     await page.getByRole('button', { name: /Analyze with Aster/i }).click();
-    // safeParseClaudeResponse("") → _parseError
-    await expect(page.getByText(/Could not parse AI response/)).toBeVisible({ timeout: 10000 });
+    // callClaude detects missing content array → throws descriptive error
+    await expect(page.getByText(/Unexpected response|Could not parse|parse analysis/i)).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Analyze a job')).toBeVisible();
   });
 
@@ -125,8 +125,8 @@ test.describe('API Resilience — Malformed Claude Responses', () => {
     });
     await setupAnalyzeView(page);
     await page.getByRole('button', { name: /Analyze with Aster/i }).click();
-    // Should show some error toast
-    await expect(page.getByText(/Could not parse|Analysis failed/)).toBeVisible({ timeout: 10000 });
+    // Should show some error toast (new callClaude throws "Analysis request failed (500)")
+    await expect(page.getByText(/Analysis.*failed|request failed|Could not parse/i)).toBeVisible({ timeout: 10000 });
     // Button should re-enable
     await expect(page.getByRole('button', { name: /Analyze with Aster/i })).toBeEnabled({ timeout: 5000 });
   });

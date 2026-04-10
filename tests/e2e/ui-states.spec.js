@@ -230,8 +230,8 @@ test.describe('4. State transitions', () => {
     await page.locator('input[placeholder="e.g. Acme Corp"]').fill('TestCo');
     await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('Engineer');
     await page.getByRole('button', { name: /Analyze with Aster/i }).click();
-    // Error toast
-    await expect(page.getByText(/Analysis failed|Could not parse/)).toBeVisible({ timeout: 10000 });
+    // Error toast — new callClaude throws descriptive errors like "Analysis request failed (500)"
+    await expect(page.getByText(/Analysis.*failed|request failed|Could not parse|Unexpected/i)).toBeVisible({ timeout: 10000 });
   });
 
   test('Pipeline: job saved → appears immediately', async ({ page }) => {
@@ -330,7 +330,7 @@ test.describe('5. Negative and destructive cases', () => {
     await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('Eng');
     // First analyze → error (may say "Analysis failed" or "Could not parse")
     await page.getByRole('button', { name: /Analyze with Aster/i }).click();
-    await expect(page.getByText(/Analysis failed|Could not parse/)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Analysis.*failed|request failed|Could not parse|Unexpected/i)).toBeVisible({ timeout: 10000 });
     // Wait for toast to dismiss before retry
     await page.waitForTimeout(4000);
     // Retry → success

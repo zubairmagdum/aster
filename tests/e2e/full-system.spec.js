@@ -301,7 +301,7 @@ test.describe('Error resilience', () => {
     await page.locator('input[placeholder="e.g. Acme Corp"]').fill('Co');
     await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('E');
     await page.getByRole('button', { name: /Analyze with Aster/i }).click();
-    await expect(page.getByText(/rate|Too many|try again/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Too many requests|Rate limited/i).first()).toBeVisible({ timeout: 10000 });
   });
 
   test('Claude malformed JSON → error with retry', async ({ page }) => {
@@ -393,7 +393,10 @@ test.describe('Tablet viewport (768px)', () => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await mockAllApiRoutes(page);
     await setupStorage(page, 'onboarded-no-jobs');
-    await navigateTo(page, 'analyze');
+    // At 768px, nav links are hidden (breakpoint 900px) — use hamburger menu
+    await page.locator('.nav-hamburger').click();
+    await page.locator('.nav-mobile-dropdown').getByRole('button', { name: 'Analyze', exact: true }).click();
+    await page.waitForTimeout(300);
     await expect(page.getByText('Analyze a job')).toBeVisible();
     // Textarea is visible and usable
     await page.locator('textarea').first().fill('Tablet test');
