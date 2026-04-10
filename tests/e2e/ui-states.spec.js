@@ -247,6 +247,8 @@ test.describe('4. State transitions', () => {
     await page.getByRole('button', { name: /Save to pipeline/i }).click();
     await dismissAuthIfNeeded(page);
     await expect(page.getByText(/saved locally|saved as/i).first()).toBeVisible({ timeout: 5000 });
+    // Wait for React state effect to flush localStorage write
+    await page.waitForTimeout(500);
     await navigateTo(page, 'pipeline');
     await expect(page.getByText('NewCo').first()).toBeVisible({ timeout: 10000 });
   });

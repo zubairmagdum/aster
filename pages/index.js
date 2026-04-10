@@ -255,6 +255,7 @@ export default function Aster(){
   const [showPrefs,setShowPrefs]=useState(false);
   const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
   const [user,setUser]=useState(null);
+  const [authChecked,setAuthChecked]=useState(false);
   const [showAuthModal,setShowAuthModal]=useState(false);
   const pendingJobRef=useRef(null);
 
@@ -322,14 +323,25 @@ export default function Aster(){
     const initAuth=async()=>{
       try{
         const u=await getUser();
-        if(u){setUser(u);await dbEnsureUser(u);await syncAndLoad(u.id);}
+        if(u){
+          setUser(u);
+          // Signed-in user should never see onboarding — skip it
+          Store.set("aster_onboarded",true);
+          setScreen("app");
+          await dbEnsureUser(u);
+          await syncAndLoad(u.id);
+        }
       }catch(e){console.warn('Auth init failed:',e.message);}
+      setAuthChecked(true);
     };
     initAuth();
     const{data:{subscription}}=supabase.auth.onAuthStateChange(async(event,session)=>{
       const u=session?.user??null;
       setUser(u);
       if(event==='SIGNED_IN'&&u){
+        // Signed-in user should never see onboarding
+        Store.set("aster_onboarded",true);
+        setScreen("app");
         syncedRef.current=false;
         lastSyncedUserIdRef.current=null;
         ph.identify(u.id,{email:u.email});
@@ -416,6 +428,8 @@ export default function Aster(){
 
   const savePrefs=(p)=>{setPrefs(p);Store.set("aster_prefs",p);if(user)dbSavePrefs(p,user.id);toast_("Preferences saved");setShowPrefs(false);};
 
+  // Don't show onboarding until auth check completes (prevents flash after OAuth redirect)
+  if(screen==="onboard"&&supabase&&!authChecked)return<div style={{minHeight:"100vh",background:T.cream}}/>;
   if(screen==="onboard")return<Onboarding onComplete={finishOnboard} onResumeUploaded={onResumeUploaded} resumeFileName={resumeFileName} inferring={inferring} inferDone={inferDone} user={user}/>;
   if(screen==="admin")return<AdminView onBack={()=>setScreen("app")}/>;
 
