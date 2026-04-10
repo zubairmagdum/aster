@@ -32,7 +32,7 @@ describe('Scraper API — blocked domains', () => {
   blockedDomains.forEach(([domain, name]) => {
     it(`returns blocked error for ${name} (${domain})`, async () => {
       const res = mockRes();
-      await scrapeHandler({ method: 'POST', body: { url: `https://${domain}/jobs/123` } }, res);
+      await scrapeHandler({ method: 'POST', headers: {}, socket: { remoteAddress: '1.1.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) }, body: { url: `https://${domain}/jobs/123` } }, res);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, error: 'dynamic_site' }));
     });
   });
@@ -41,25 +41,25 @@ describe('Scraper API — blocked domains', () => {
 describe('Scraper API — URL validation', () => {
   it('rejects empty URL', async () => {
     const res = mockRes();
-    await scrapeHandler({ method: 'POST', body: { url: '' } }, res);
+    await scrapeHandler({ method: 'POST', headers: {}, socket: { remoteAddress: '1.1.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) }, body: { url: '' } }, res);
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
   it('rejects URL without http/https', async () => {
     const res = mockRes();
-    await scrapeHandler({ method: 'POST', body: { url: 'ftp://example.com' } }, res);
+    await scrapeHandler({ method: 'POST', headers: {}, socket: { remoteAddress: '1.1.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) }, body: { url: 'ftp://example.com' } }, res);
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
   it('rejects missing URL', async () => {
     const res = mockRes();
-    await scrapeHandler({ method: 'POST', body: {} }, res);
+    await scrapeHandler({ method: 'POST', headers: {}, socket: { remoteAddress: '1.1.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) }, body: {} }, res);
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
   it('rejects non-POST method', async () => {
     const res = mockRes();
-    await scrapeHandler({ method: 'GET' }, res);
+    await scrapeHandler({ method: 'GET', headers: {} }, res);
     expect(res.status).toHaveBeenCalledWith(405);
   });
 });
@@ -84,7 +84,7 @@ describe('Scraper API — Greenhouse detection', () => {
   it('recognizes boards.greenhouse.io as Greenhouse', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, url: 'https://boards.greenhouse.io/co/jobs/1', text: async () => greenhouseHtml });
     const res = mockRes();
-    await scrapeHandler({ method: 'POST', body: { url: 'https://boards.greenhouse.io/co/jobs/1' } }, res);
+    await scrapeHandler({ method: 'POST', headers: {}, socket: { remoteAddress: '1.1.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) }, body: { url: 'https://boards.greenhouse.io/co/jobs/1' } }, res);
     const call = res.json.mock.calls[0][0];
     expect(call.source).toBe('greenhouse');
   });
@@ -92,7 +92,7 @@ describe('Scraper API — Greenhouse detection', () => {
   it('recognizes job-boards.greenhouse.io as Greenhouse', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, url: 'https://job-boards.greenhouse.io/co/jobs/1', text: async () => greenhouseHtml });
     const res = mockRes();
-    await scrapeHandler({ method: 'POST', body: { url: 'https://job-boards.greenhouse.io/co/jobs/1' } }, res);
+    await scrapeHandler({ method: 'POST', headers: {}, socket: { remoteAddress: '1.1.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) }, body: { url: 'https://job-boards.greenhouse.io/co/jobs/1' } }, res);
     const call = res.json.mock.calls[0][0];
     expect(call.source).toBe('greenhouse');
   });
@@ -100,7 +100,7 @@ describe('Scraper API — Greenhouse detection', () => {
   it('extracts job title and description from Greenhouse HTML', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, url: 'https://boards.greenhouse.io/co/jobs/1', text: async () => greenhouseHtml });
     const res = mockRes();
-    await scrapeHandler({ method: 'POST', body: { url: 'https://boards.greenhouse.io/co/jobs/1' } }, res);
+    await scrapeHandler({ method: 'POST', headers: {}, socket: { remoteAddress: '1.1.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) }, body: { url: 'https://boards.greenhouse.io/co/jobs/1' } }, res);
     const call = res.json.mock.calls[0][0];
     expect(call.success).toBe(true);
     expect(call.text).toContain('Senior Product Manager');
@@ -111,7 +111,7 @@ describe('Scraper API — Greenhouse detection', () => {
   it('stops extraction before "Apply for this job" section', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, url: 'https://boards.greenhouse.io/co/jobs/1', text: async () => greenhouseHtml });
     const res = mockRes();
-    await scrapeHandler({ method: 'POST', body: { url: 'https://boards.greenhouse.io/co/jobs/1' } }, res);
+    await scrapeHandler({ method: 'POST', headers: {}, socket: { remoteAddress: '1.1.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) }, body: { url: 'https://boards.greenhouse.io/co/jobs/1' } }, res);
     const call = res.json.mock.calls[0][0];
     expect(call.text).not.toContain('Apply for this job');
   });
@@ -119,7 +119,7 @@ describe('Scraper API — Greenhouse detection', () => {
   it('strips nav, header, footer tags', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, url: 'https://boards.greenhouse.io/co/jobs/1', text: async () => greenhouseHtml });
     const res = mockRes();
-    await scrapeHandler({ method: 'POST', body: { url: 'https://boards.greenhouse.io/co/jobs/1' } }, res);
+    await scrapeHandler({ method: 'POST', headers: {}, socket: { remoteAddress: '1.1.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) }, body: { url: 'https://boards.greenhouse.io/co/jobs/1' } }, res);
     const call = res.json.mock.calls[0][0];
     expect(call.text).not.toContain('Nav stuff');
     expect(call.text).not.toContain('Footer stuff');
@@ -134,7 +134,7 @@ describe('Scraper API — job listing index detection', () => {
     const indexHtml = `<html><body><main><h1>Open Positions at Acme Corp</h1><p>We are hiring across multiple locations. Browse our open roles below and find the right fit for you.</p>${jobs}</main></body></html>`;
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, url: 'https://example.com/jobs', text: async () => indexHtml });
     const res = mockRes();
-    await scrapeHandler({ method: 'POST', body: { url: 'https://example.com/jobs' } }, res);
+    await scrapeHandler({ method: 'POST', headers: {}, socket: { remoteAddress: '1.1.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) }, body: { url: 'https://example.com/jobs' } }, res);
     const call = res.json.mock.calls[0][0];
     expect(call.success).toBe(false);
     expect(call.error).toBe('listing_index');
@@ -148,7 +148,7 @@ describe('Scraper API — junk text validation', () => {
     const junkHtml = `<html><body><main>${'{"key":"val"}  '.repeat(20)}</main></body></html>`;
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, url: 'https://example.com', text: async () => junkHtml });
     const res = mockRes();
-    await scrapeHandler({ method: 'POST', body: { url: 'https://example.com/job' } }, res);
+    await scrapeHandler({ method: 'POST', headers: {}, socket: { remoteAddress: '1.1.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) }, body: { url: 'https://example.com/job' } }, res);
     expect(res.json.mock.calls[0][0].success).toBe(false);
   });
 
@@ -156,7 +156,7 @@ describe('Scraper API — junk text validation', () => {
     const shortHtml = '<html><body><main>Short text here.</main></body></html>';
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, url: 'https://example.com', text: async () => shortHtml });
     const res = mockRes();
-    await scrapeHandler({ method: 'POST', body: { url: 'https://example.com/job' } }, res);
+    await scrapeHandler({ method: 'POST', headers: {}, socket: { remoteAddress: '1.1.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) }, body: { url: 'https://example.com/job' } }, res);
     expect(res.json.mock.calls[0][0].success).toBe(false);
   });
 
@@ -164,7 +164,7 @@ describe('Scraper API — junk text validation', () => {
     const nextHtml = `<html><body><main>${'a'.repeat(300)} window.__NEXT_DATA__ = {}</main></body></html>`;
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, url: 'https://example.com', text: async () => nextHtml });
     const res = mockRes();
-    await scrapeHandler({ method: 'POST', body: { url: 'https://example.com/job' } }, res);
+    await scrapeHandler({ method: 'POST', headers: {}, socket: { remoteAddress: '1.1.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) }, body: { url: 'https://example.com/job' } }, res);
     expect(res.json.mock.calls[0][0].success).toBe(false);
   });
 
@@ -172,7 +172,7 @@ describe('Scraper API — junk text validation', () => {
     const numericHtml = `<html><body><main>${'12345 '.repeat(100)}</main></body></html>`;
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, url: 'https://example.com', text: async () => numericHtml });
     const res = mockRes();
-    await scrapeHandler({ method: 'POST', body: { url: 'https://example.com/job' } }, res);
+    await scrapeHandler({ method: 'POST', headers: {}, socket: { remoteAddress: '1.1.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) }, body: { url: 'https://example.com/job' } }, res);
     expect(res.json.mock.calls[0][0].success).toBe(false);
   });
 });
@@ -180,7 +180,7 @@ describe('Scraper API — junk text validation', () => {
 describe('Digest API', () => {
   it('rejects non-GET requests', async () => {
     const res = mockRes();
-    await digestHandler({ method: 'POST' }, res);
+    await digestHandler({ method: 'POST', headers: {} }, res);
     expect(res.status).toHaveBeenCalledWith(405);
   });
 });

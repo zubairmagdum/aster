@@ -1,6 +1,14 @@
 import Head from 'next/head';
+import { useEffect } from 'react';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 export default function App({ Component, pageProps }) {
+  useEffect(() => {
+    const handler = (e) => { console.error('Unhandled:', e.reason); };
+    window.addEventListener('unhandledrejection', handler);
+    return () => window.removeEventListener('unhandledrejection', handler);
+  }, []);
+
   return (
     <>
       <Head>
@@ -20,7 +28,9 @@ export default function App({ Component, pageProps }) {
         <meta name="twitter:description" content="Paste any job description. Get your fit score, gap analysis, tailored resume bullets, and outreach strategy in 15 seconds. Free, no sign-up required." />
         <meta name="twitter:image" content="https://astercopilot.com/og-image.png" />
       </Head>
-      <Component {...pageProps} />
+      <ErrorBoundary>
+        <Component {...pageProps} />
+      </ErrorBoundary>
     </>
   );
 }

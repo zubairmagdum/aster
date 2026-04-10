@@ -16,10 +16,13 @@ const Store={get:(k,fb=null)=>{try{const v=localStorage.getItem(k);return v?JSON
 // ─── RESUME PARSER ────────────────────────────────────────────────────────────
 async function parseResume(file){
   const reader=new FileReader();
-  const base64=await new Promise((resolve,reject)=>{reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=reject;reader.readAsDataURL(file);});
-  const res=await fetch('/api/parse-resume',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base64,mediaType:file.type,fileName:file.name})});
+  const base64=await new Promise((resolve,reject)=>{reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=()=>reject(new Error('Could not read file. Try a different file format.'));reader.readAsDataURL(file);});
+  let res;
+  try{res=await fetch('/api/parse-resume',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base64,mediaType:file.type,fileName:file.name})});}
+  catch{throw new Error('Could not reach the server. Check your connection and try again.');}
+  if(!res.ok)throw new Error(`Resume parsing failed (${res.status}). Try again.`);
   const data=await res.json();
-  if(!data.text)throw new Error('Could not parse resume');
+  if(!data.text)throw new Error('Could not extract text from this file. Try PDF or DOCX.');
   return data.text.slice(0,4000);
 }
 
@@ -119,10 +122,21 @@ Return ONLY valid JSON:
 
 // ─── CLAUDE API ───────────────────────────────────────────────────────────────
 async function callClaude(prompt,maxTokens=1000){
-  const res=await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:maxTokens,messages:[{role:"user",content:prompt}]})});
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),45000);
+  let res;
+  try{res=await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:maxTokens,messages:[{role:"user",content:prompt}]}),signal:controller.signal});}
+  catch(e){clearTimeout(timeout);if(e.name==='AbortError')throw new Error('Request timed out after 45 seconds. Try again.');throw new Error('Could not reach Aster. Check your connection and try again.');}
+  clearTimeout(timeout);
+  if(res.status===429)throw new Error('Too many requests. Wait a moment and try again.');
+  if(!res.ok)throw new Error(`Analysis request failed (${res.status}). Please try again.`);
   const data=await res.json();
-  const text=data.content?.filter(b=>b.type==="text").map(b=>b.text).join("")||"";
-  return safeParseClaudeResponse(text);
+  if(data.error)throw new Error(typeof data.error==='string'?data.error:(data.error.message||'Analysis returned an error. Please try again.'));
+  if(!data.content||!Array.isArray(data.content))throw new Error('Unexpected response format. Please try again.');
+  const text=data.content.filter(b=>b.type==="text").map(b=>b.text).join("")||"";
+  const parsed=safeParseClaudeResponse(text);
+  if(parsed?._parseError)throw new Error('Could not parse analysis results. Please try again.');
+  return parsed;
 }
 
 // ─── GLOBAL CSS ───────────────────────────────────────────────────────────────
@@ -300,14 +314,16 @@ export default function Aster(){
         const localStrategy={targetRole:Store.get("aster_target_role",""),whatsWorking:Store.get("aster_whats_working",""),whatsNot:Store.get("aster_whats_not_working",""),weeklyBrief:Store.get("aster_strategy_brief",null)};
         if(localStrategy.targetRole||localStrategy.whatsWorking||localStrategy.whatsNot)await dbSaveStrategy(localStrategy,userId);
       }
-    }catch(e){/* sync failed silently */}
+    }catch(e){console.error('Sync failed:',e);setToast({msg:"Couldn't sync your data. Working offline.",type:"err"});}
   };
 
   useEffect(()=>{
     if(!supabase)return;
     const initAuth=async()=>{
-      const u=await getUser();
-      if(u){setUser(u);await dbEnsureUser(u);await syncAndLoad(u.id);}
+      try{
+        const u=await getUser();
+        if(u){setUser(u);await dbEnsureUser(u);await syncAndLoad(u.id);}
+      }catch(e){console.warn('Auth init failed:',e.message);}
     };
     initAuth();
     const{data:{subscription}}=supabase.auth.onAuthStateChange(async(event,session)=>{
@@ -346,6 +362,7 @@ export default function Aster(){
     setInferring(true);setInferDone(false);
     try{
       const res=await fetch('/api/infer-prefs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({resumeText:text})});
+      if(!res.ok)throw new Error('Inference failed');
       const inferred=await res.json();
       if(inferred&&!inferred.error){
         setPrefs(current=>{
@@ -365,12 +382,12 @@ export default function Aster(){
         });
         toast_("Preferences set from your resume — check Prefs to adjust");
       }
-    }catch(e){console.log('Pref inference failed silently:',e);}
+    }catch(e){console.warn('Pref inference failed:',e.message);}
     setInferring(false);setInferDone(true);
   };
 
   const addJob=(job)=>{
-    const j={...job,id:Date.now().toString(),dateAdded:new Date().toISOString().split("T")[0]};
+    const j={...job,id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),dateAdded:new Date().toISOString().split("T")[0]};
     setJobs(prev=>[j,...prev]);
     if(j.roleDNA)setProfile(p=>updateProfile(p,j.roleDNA,"saved"));
     Analytics.track("fit_score_generated",{company:j.company});
@@ -383,18 +400,18 @@ export default function Aster(){
       const updated=prev.map(j=>j.id===id?{...j,...patch}:j);
       const updatedJob=updated.find(j=>j.id===id);
       if(user&&updatedJob)dbSaveJob(updatedJob,user.id);
+      // Update profile inside setter to avoid stale closure
+      if(patch.status&&updatedJob?.roleDNA)setProfile(p=>updateProfile(p,updatedJob.roleDNA,patch.status));
       return updated;
     });
-    const job=jobs.find(j=>j.id===id);
-    if(patch.status&&job?.roleDNA)setProfile(p=>updateProfile(p,job.roleDNA,patch.status));
   };
 
   const removeJob=(id)=>{setJobs(prev=>prev.filter(j=>j.id!==id));if(user)dbDeleteJob(id,user.id);};
-  const captureEmail=(e)=>{setEmail(e);Store.set("aster_email",e);Analytics.track("email_captured",{email:e});toast_("Workspace saved ✨");};
+  const captureEmail=(e)=>{setEmail(e);Store.set("aster_email",e);Analytics.track("email_captured");toast_("Workspace saved ✨");};
 
   useEffect(()=>{const seen=Store.get("aster_onboarded",false);if(seen)setScreen("app");Analytics.track("session_start");initPosthog();},[]);
 
-  const finishOnboard=()=>{Store.set("aster_onboarded",true);setScreen("app");};
+  const finishOnboard=()=>{Store.set("aster_onboarded",true);setScreen("app");ph.capture('onboarding_completed');};
   const activeJob=jobs.find(j=>j.id===activeJobId)||null;
 
   const savePrefs=(p)=>{setPrefs(p);Store.set("aster_prefs",p);if(user)dbSavePrefs(p,user.id);toast_("Preferences saved");setShowPrefs(false);};
@@ -408,7 +425,7 @@ export default function Aster(){
       <style>{GLOBAL_CSS}</style>
       {toast&&<Toast msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
       {showPrefs&&<PrefsModal prefs={prefs} onSave={savePrefs} onClose={()=>setShowPrefs(false)}/>}
-      {showAuthModal&&<AuthModal onClose={()=>{setShowAuthModal(false);const pj=pendingJobRef.current;if(pj&&!user){pendingJobRef.current=null;Store.set("aster_pending_job",null);addJob(pj);toast_(`${pj.company} saved locally`);}}}/>}
+      {showAuthModal&&<AuthModal onClose={()=>{setShowAuthModal(false);ph.capture('auth_modal_dismissed');const pj=pendingJobRef.current;if(pj){pendingJobRef.current=null;Store.set("aster_pending_job",null);addJob(pj);toast_(`${pj.company} saved locally`);}}}/>}
 
       {/* Nav */}
       <nav style={{background:T.white,borderBottom:`1px solid ${T.cream2}`,padding:"0 32px",height:58,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 0 rgba(28,28,28,0.04)"}}>
@@ -628,12 +645,15 @@ function FeedbackWidget({userId,currentView,toast_}){
   const submit=async()=>{
     if(!message.trim())return;
     setSending(true);
-    await dbSubmitFeedback({user_id:userId||null,type,context:currentView,message:message.trim()});
-    const fb=Store.get("aster_feedback")||[];
-    fb.push({type,context:currentView,message:message.trim(),created_at:new Date().toISOString()});
-    Store.set("aster_feedback",fb.slice(-50));
-    setMessage("");setOpen(false);setSending(false);
-    toast_("Thanks for your feedback!");
+    try{
+      await dbSubmitFeedback({user_id:userId||null,type,context:currentView,message:message.trim()});
+      const fb=Store.get("aster_feedback")||[];
+      fb.push({type,context:currentView,message:message.trim(),created_at:new Date().toISOString()});
+      Store.set("aster_feedback",fb.slice(-50));
+      setMessage("");setOpen(false);
+      toast_("Thanks for your feedback!");
+    }catch{toast_("Feedback couldn't be sent. Try again.","err");}
+    setSending(false);
   };
   return(
     <>
@@ -867,7 +887,7 @@ function EmailCapture(){
   const [subEmail,setSubEmail]=useState("");
   const [digestOptIn,setDigestOptIn]=useState(true);
   const [subscribed,setSubscribed]=useState(false);
-  const submit=()=>{if(!subEmail.includes('@'))return;dbSubscribeEmail(subEmail,'website',digestOptIn);setSubscribed(true);};
+  const submit=async()=>{if(!subEmail.includes('@'))return;try{await dbSubscribeEmail(subEmail,'website',digestOptIn);setSubscribed(true);}catch{/* subscribe is best-effort */}};
   if(subscribed)return<div style={{marginTop:16,fontSize:12,color:T.sage,textAlign:"center"}}>You're in! We'll keep you posted.</div>;
   return(
     <div style={{marginTop:20,padding:"14px 16px",background:T.cream,borderRadius:RADIUS.md,border:`1px solid ${T.cream3}`}}>
@@ -898,11 +918,15 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
   const [company,setCompany]=useState("");
   const [role,setRole]=useState("");
   const [loading,setLoading]=useState(false);
+  const [slowAnalysis,setSlowAnalysis]=useState(false);
+  const analyzingRef=useRef(false);
   const [extracting,setExtracting]=useState(false);
   const [result,setResult]=useState(null);
   const [saved,setSaved]=useState(false);
   const [activeTab,setActiveTab]=useState("fit");
   const [hardSkipReasons,setHardSkipReasons]=useState([]);
+  // Re-run hard skip when prefs change
+  useEffect(()=>{if(jd&&jd.length>200)setHardSkipReasons(checkHardSkip(jd,prefs));},[prefs]);
   const [saveStatus,setSaveStatus]=useState("Saved");
   const extractTimeoutRef=useRef(null);
 
@@ -917,7 +941,7 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
           const extracted=await callClaude(PROMPTS.extractJD(val),100);
           if(extracted.company&&!company)setCompany(extracted.company);
           if(extracted.role&&!role)setRole(extracted.role);
-        }catch{}
+        }catch{/* auto-extract is optional, ignore */}
         setExtracting(false);
       },800);
     }
@@ -933,6 +957,7 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
     setScraping(true);setScrapeError(null);setScrapeSuccess(null);
     try{
       const r=await fetch('/api/scrape',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:jobUrl})});
+      if(r.status===429){setScrapeError("Too many requests. Wait a moment and try again.");setScraping(false);return;}
       const data=await r.json();
       let hostname='';try{hostname=new URL(jobUrl).hostname;}catch{}
       ph.capture('url_paste_used',{url:hostname,source:data.source||'unknown',success:!!data.success});
@@ -949,31 +974,33 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
 
   // ── Duplicate detection ──────────────────────────────────────────────────
   const analyze=async()=>{
-    if(!jd.trim())return;
+    if(!jd.trim()||analyzingRef.current)return;
+    analyzingRef.current=true;
     const startTime=Date.now();
     ph.capture('analyze_clicked',{has_resume:!!resumeText,jd_length:jd.length,company,role});
-    setLoading(true);setResult(null);setSaved(false);
+    setLoading(true);setResult(null);setSaved(false);setSlowAnalysis(false);
+    const slowTimer=setTimeout(()=>setSlowAnalysis(true),30000);
     try{
       const r=await callClaude(PROMPTS.analyze(resumeText,jd,profile,prefs));
-      if(r._parseError){toast_("Could not parse AI response. Try again.","err");setLoading(false);return;}
       const ms=matchScore(r?.roleDNA,profile);
       if(r.estimatedCompRange&&r.estimatedCompRange!=="null"&&prefs?.minSalary){const nums=r.estimatedCompRange.match(/(\d[\d,]*)/g);if(nums){const maxVal=Math.max(...nums.map(n=>parseInt(n.replace(/,/g,""))));const normalizedMax=maxVal<1000?maxVal*1000:maxVal;if(normalizedMax<prefs.minSalary*0.85){r.compWarning=`Estimated comp may be below your $${Math.round(prefs.minSalary/1000)}K target`;}}}
       setResult({...r,matchScore:ms});
       Analytics.track("jd_analyzed",{company,fitScore:r.fitScore});
       ph.capture('analyze_completed',{fit_score:r.fitScore,verdict:r.verdict,company,role,duration_ms:Date.now()-startTime});
-    }catch{toast_("Analysis failed. Check your connection.","err");}
-    setLoading(false);
+    }catch(e){toast_(e.message||"Analysis failed. Check your connection and try again.","err");}
+    clearTimeout(slowTimer);setSlowAnalysis(false);setLoading(false);analyzingRef.current=false;
   };
 
   const save=()=>{
+    if(saved)return; // Prevent double-save
     if(!company||!role){toast_("Add company and role name first","err");return;}
-    const jobData={company,role,status:saveStatus,fitScore:result?.fitScore,matchScore:result?.matchScore,roleDNA:result?.roleDNA,aiAnalysis:result,estimatedCompRange:result?.estimatedCompRange||null,atsScore:result?.atsKeywords?.length||0,notes:"",interestRating:3};
+    const jobData={company,role,jd,status:saveStatus,fitScore:result?.fitScore,matchScore:result?.matchScore,roleDNA:result?.roleDNA,aiAnalysis:result,estimatedCompRange:result?.estimatedCompRange||null,compWarning:result?.compWarning||null,atsScore:result?.atsKeywords?.length||0,notes:"",interestRating:3};
     if(!user&&onAuthRequired){
       ph.capture('auth_modal_opened',{trigger:'save_job'});
       onAuthRequired(jobData);
       return;
     }
-    addJob(jobData);
+    try{addJob(jobData);}catch(e){toast_("Couldn't save. Your analysis is still here — try again.","err");return;}
     setSaved(true);
     ph.capture('job_saved',{status:saveStatus,fit_score:result?.fitScore,verdict:result?.verdict,company,role});
     toast_(`${company} saved as "${saveStatus}" ✦`);
@@ -1064,7 +1091,7 @@ function AnalyzeView({jobs,profile,prefs,resumeText,addJob,setView,setActiveJobI
           </div>
         )}
         <button className="btn-primary" onClick={analyze} disabled={loading||!jd.trim()} style={{width:"100%",fontSize:14,padding:"13px"}}>
-          {loading?<span style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><Spinner/>Analyzing...</span>:"✦ Analyze with Aster AI"}
+          {loading?<span style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><Spinner/>{slowAnalysis?"Still working on it...":"Analyzing..."}</span>:"✦ Analyze with Aster AI"}
         </button>
         {isFirstVisit&&<EmailCapture/>}
       </div>
@@ -1236,7 +1263,7 @@ function PipelineView({jobs,contacts,updateJob,removeJob,setJobs,setView,setActi
     try{
       const r=await callClaude(`You are an interview coach. Given this role: ${job.role} at ${job.company}, generate interview preparation material.${resumeText?`\n\nCandidate resume:\n${resumeText.slice(0,2000)}`:""}\n\nReturn ONLY valid JSON:\n{\n  "questions": [\n    {"question": "<likely interview question>", "starStory": "<STAR story from resume that best answers this, or suggested approach if no resume>"}\n  ],\n  "research": ["<thing to research before interview>", "<thing 2>", "<thing 3>"]\n}`,1200);
       updateJob(job.id,{interviewPrep:r});
-    }catch{toast_("Interview prep failed","err");}
+    }catch(e){toast_(e.message||"Interview prep failed. Try again.","err");}
     setPrepLoading(false);
   };
 
@@ -1656,7 +1683,7 @@ Return ONLY valid JSON:
       setBrief(result);
       Store.set("aster_strategy_brief",result);
       dbSaveStrategy({targetRole,whatsWorking:working,whatsNot:notWorking,weeklyBrief:result},userId);
-    }catch{}
+    }catch{toast_("Strategy brief failed. Try again.","err");}
     setLoading(false);
   };
 
@@ -1733,7 +1760,7 @@ Text: ${linkedinText.slice(0,3000)}`,800);
         const sorted=[...points].sort((a,b)=>(b.strength||0)-(a.strength||0));
         setProofs(sorted);
         Store.set("aster_proof_library",sorted);
-        if(supabase&&userId)supabase.from("candidate_profiles").upsert({user_id:userId,linkedin_text:linkedinText,proof_library:sorted},{onConflict:"user_id"});
+        if(supabase&&userId)supabase.from("candidate_profiles").upsert({user_id:userId,linkedin_text:linkedinText,proof_library:sorted},{onConflict:"user_id"}).catch(()=>{});
         toast_(`Extracted ${sorted.length} proof points`);
       }else{toast_("Could not extract proof points","err");}
     }catch{toast_("Extraction failed","err");}

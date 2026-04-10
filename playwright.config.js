@@ -4,13 +4,14 @@ export default defineConfig({
   testDir: './tests',
   testMatch: ['e2e/**/*.spec.js', 'visual/**/*.spec.js', 'a11y/**/*.spec.js'],
   fullyParallel: true,
-  retries: 1,
+  retries: process.env.CI ? 2 : 1,
   reporter: [
     ['html', { open: 'never' }],
     ['list'],
     ['./tests/reporters/bug-package-reporter.js'],
     ['./tests/reporters/claude-prompt-reporter.js'],
   ],
+  snapshotPathTemplate: '{testDir}/{testFileDir}/{testFileName}-snapshots/{arg}-{projectName}{ext}',
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',

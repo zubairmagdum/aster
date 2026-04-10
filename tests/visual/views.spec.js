@@ -4,6 +4,9 @@ import { navigateTo } from '../helpers/navigate-to.js';
 import { mockAllApiRoutes } from '../helpers/mock-api.js';
 
 test.describe('Visual Regression', () => {
+  // Visual baselines are platform-specific — skip on CI where OS differs from dev machine
+  test.skip(!!process.env.CI, 'Visual regression baselines are platform-specific; run locally to update');
+
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
   });

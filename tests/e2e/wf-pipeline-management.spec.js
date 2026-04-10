@@ -8,8 +8,9 @@ test.describe('W4: Pipeline Management', () => {
     await mockAllApiRoutes(page);
     await setupStorage(page, 'with-5-jobs');
     await navigateTo(page, 'pipeline');
-    // Wait for pipeline to render
+    // Wait for pipeline to render — wait for a specific job to ensure cards loaded
     await expect(page.getByText('Your Pipeline')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Stripe').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('all jobs render in pipeline', { tag: '@critical' }, async ({ page }) => {

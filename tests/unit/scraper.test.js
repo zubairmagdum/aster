@@ -11,7 +11,7 @@ const res = () => {
   return r;
 };
 
-const req = (url) => ({ method: 'POST', body: { url } });
+const req = (url) => ({ method: 'POST', body: { url }, headers: {}, socket: { remoteAddress: '100.100.100.' + Math.floor(Math.random() * 255) } });
 
 const mockHtml = (body, { hostname = 'https://example.com' } = {}) => {
   vi.mocked(fetch).mockResolvedValueOnce({ ok: true, url: hostname, text: async () => body });
@@ -216,8 +216,8 @@ describe('Scraper — input validation', () => {
   it('no http → 400', async () => { const r = res(); await handler(req('ftp://x.com'), r); expect(r.status).toHaveBeenCalledWith(400); });
   it('just http:// → 400', async () => { const r = res(); await handler(req('http://'), r); expect(r.json.mock.calls[0]?.[0]?.success ?? false).toBe(false); });
   it('non-URL string → 400', async () => { const r = res(); await handler(req('hello world'), r); expect(r.status).toHaveBeenCalledWith(400); });
-  it('missing body → 400', async () => { const r = res(); await handler({ method: 'POST', body: {} }, r); expect(r.status).toHaveBeenCalledWith(400); });
-  it('GET → 405', async () => { const r = res(); await handler({ method: 'GET' }, r); expect(r.status).toHaveBeenCalledWith(405); });
+  it('missing body → 400', async () => { const r = res(); await handler({ method: 'POST', body: {}, headers: {}, socket: { remoteAddress: '1.1.1.1' } }, r); expect(r.status).toHaveBeenCalledWith(400); });
+  it('GET → 405', async () => { const r = res(); await handler({ method: 'GET', headers: {} }, r); expect(r.status).toHaveBeenCalledWith(405); });
   it('URL with spaces handled gracefully', async () => { vi.mocked(fetch).mockRejectedValueOnce(new Error('fail')); const r = res(); await handler(req('https://example.com/job with spaces'), r); expect(r.json.mock.calls[0][0].success).toBe(false); });
 });
 

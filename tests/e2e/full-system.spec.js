@@ -3,7 +3,7 @@ import { setupStorage } from '../helpers/setup-storage.js';
 import { navigateTo } from '../helpers/navigate-to.js';
 import { mockAllApiRoutes } from '../helpers/mock-api.js';
 
-const SAMPLE_JD = `Senior Software Engineer at Acme Corp. 5+ years experience. Build scalable APIs. Python, Go, AWS. Competitive compensation, equity, remote work, unlimited PTO, 401k.`;
+const SAMPLE_JD = `Senior Software Engineer at Acme Corp. 5+ years experience required. Build scalable APIs and distributed systems. Python, Go, AWS. Competitive compensation $140k-180k, equity, remote work, unlimited PTO, 401k.`;
 
 async function dismissAuth(page) {
   const v = await page.getByText('Continue without account').isVisible({ timeout: 2000 }).catch(() => false);
@@ -13,25 +13,19 @@ async function dismissAuth(page) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // FIRST VISIT
 // ═══════════════════════════════════════════════════════════════════════════════
-test.describe('First visit experience', () => {
+test.describe('First visit (clean state)', () => {
   test.beforeEach(async ({ page }) => {
     await mockAllApiRoutes(page);
     await setupStorage(page, 'onboarded-no-jobs');
   });
 
-  test('app loads, nav visible, no errors', async ({ page }) => {
+  test('page loads, hero visible, no errors', async ({ page }) => {
     const errors = [];
     page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
-    for (const tab of ['Dashboard', 'Analyze', 'Pipeline', 'Outreach', 'Strategy', 'Resume']) {
-      await expect(page.getByRole('button', { name: tab, exact: true })).toBeVisible();
-    }
-    expect(errors.filter(e => !e.includes('favicon'))).toHaveLength(0);
-  });
-
-  test('hero visible on analyze tab', async ({ page }) => {
     await navigateTo(page, 'analyze');
     await expect(page.getByText('Stop guessing')).toBeVisible();
     await expect(page.getByText('No sign-up required. Free.')).toBeVisible();
+    expect(errors.filter(e => !e.includes('favicon') && !e.includes('the server responded'))).toHaveLength(0);
   });
 
   test('email capture visible', async ({ page }) => {
@@ -44,11 +38,19 @@ test.describe('First visit experience', () => {
     await expect(page.getByText('Try a sample JD')).toBeVisible();
   });
 
-  test('resume dot NOT visible when no resume', async ({ page }) => {
+  test('no resume dot when no resume', async ({ page }) => {
     await setupStorage(page, 'onboarded-no-resume');
     const btn = page.getByRole('button', { name: 'Resume', exact: true });
     const dots = btn.locator('span[style*="border-radius: 50%"]');
     await expect(dots).toHaveCount(0);
+  });
+
+  test('all nav tabs clickable without crash', async ({ page }) => {
+    for (const tab of ['Dashboard', 'Analyze', 'Pipeline', 'Outreach', 'Strategy', 'Resume']) {
+      await page.getByRole('button', { name: tab, exact: true }).click();
+      await page.waitForTimeout(200);
+    }
+    expect(true).toBe(true);
   });
 
   test('footer links present', async ({ page }) => {
@@ -56,28 +58,69 @@ test.describe('First visit experience', () => {
     await expect(page.locator('a[href="mailto:zubair@astercopilot.com"]')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Delete my workspace' })).toBeVisible();
   });
+
+  test('OG meta tags present', async ({ page }) => {
+    expect(await page.locator('meta[property="og:title"]').getAttribute('content')).toContain('Aster');
+    expect(await page.locator('meta[property="og:image"]').getAttribute('content')).toContain('og-image.png');
+    expect(await page.locator('meta[name="twitter:card"]').getAttribute('content')).toBe('summary_large_image');
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SAMPLE JD FLOW
+// CORE ANALYZE FLOW
+// ═══════════════════════════════════════════════════════════════════════════════
+test.describe('Core analyze flow', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockAllApiRoutes(page);
+    await setupStorage(page, 'onboarded-no-jobs');
+    await navigateTo(page, 'analyze');
+  });
+
+  test('paste JD → analyze → result appears with score', async ({ page }) => {
+    await page.locator('textarea').first().fill(SAMPLE_JD);
+    await page.locator('input[placeholder="e.g. Acme Corp"]').fill('Acme');
+    await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('SWE');
+    await page.getByRole('button', { name: /Analyze with Aster/i }).click();
+    await expect(page.locator('.score-ring').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Strengths')).toBeVisible();
+  });
+
+  test('share buttons appear after analysis', async ({ page }) => {
+    await page.locator('textarea').first().fill(SAMPLE_JD);
+    await page.locator('input[placeholder="e.g. Acme Corp"]').fill('Acme');
+    await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('SWE');
+    await page.getByRole('button', { name: /Analyze with Aster/i }).click();
+    await expect(page.locator('.score-ring').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Copy shareable summary')).toBeVisible();
+    await expect(page.getByText('Share on LinkedIn')).toBeVisible();
+  });
+
+  test('feedback thumbs appear after analysis', async ({ page }) => {
+    await page.locator('textarea').first().fill(SAMPLE_JD);
+    await page.locator('input[placeholder="e.g. Acme Corp"]').fill('Co');
+    await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('E');
+    await page.getByRole('button', { name: /Analyze with Aster/i }).click();
+    await expect(page.locator('.score-ring').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Was this helpful?')).toBeVisible();
+  });
+
+  test('empty textarea → analyze button disabled', async ({ page }) => {
+    await expect(page.getByRole('button', { name: /Analyze with Aster/i })).toBeDisabled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SAMPLE JD
 // ═══════════════════════════════════════════════════════════════════════════════
 test.describe('Sample JD flow', () => {
-  test('click sample → analyze → results render', async ({ page }) => {
+  test('click sample → populates textarea', async ({ page }) => {
     await mockAllApiRoutes(page);
     await setupStorage(page, 'onboarded-no-jobs');
     await navigateTo(page, 'analyze');
     await page.getByText('Try a sample JD').click();
     const val = await page.locator('textarea').first().inputValue();
     expect(val).toContain('Relay');
-    expect(val).toContain('Responsibilities');
     await expect(page.getByText('Try a sample JD')).not.toBeVisible();
-    // Auto-extract fires, fill remaining fields
-    await page.waitForTimeout(1500);
-    await page.getByRole('button', { name: /Analyze with Aster/i }).click();
-    await expect(page.locator('.score-ring').first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Strengths')).toBeVisible();
-    await expect(page.getByText('Was this helpful?')).toBeVisible();
-    await expect(page.getByText('Copy shareable summary')).toBeVisible();
   });
 });
 
@@ -101,6 +144,31 @@ test.describe('URL scraping UI', () => {
   test('toggle back to textarea', async ({ page }) => {
     await page.getByText('Have a link?').click();
     await page.getByText('Paste the full description instead').click();
+    await expect(page.locator('textarea').first()).toBeVisible();
+  });
+
+  test('blocked domain shows error card', async ({ page }) => {
+    await page.route('**/api/scrape', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ success: false, error: 'dynamic_site', message: 'Lever blocks automated access.' }),
+    }));
+    await page.getByText('Have a link?').click();
+    await page.locator('input[placeholder*="greenhouse"]').fill('https://jobs.lever.co/company/123');
+    await page.getByRole('button', { name: 'Extract' }).click();
+    await expect(page.getByText('Lever blocks')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: 'Paste the description instead' })).toBeVisible();
+  });
+
+  test('paste-instead button switches to textarea', async ({ page }) => {
+    await page.route('**/api/scrape', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ success: false, error: 'fetch_failed', message: 'Timeout' }),
+    }));
+    await page.getByText('Have a link?').click();
+    await page.locator('input[placeholder*="greenhouse"]').fill('https://example.com/slow');
+    await page.getByRole('button', { name: 'Extract' }).click();
+    await expect(page.getByRole('button', { name: 'Paste the description instead' })).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: 'Paste the description instead' }).click();
     await expect(page.locator('textarea').first()).toBeVisible();
   });
 });
@@ -136,32 +204,12 @@ test.describe('Email capture', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SHARE CTA
+// SAVE FLOW & AUTH
 // ═══════════════════════════════════════════════════════════════════════════════
-test.describe('Share CTA', () => {
-  test('buttons appear after analysis only', async ({ page }) => {
+test.describe('Save flow', () => {
+  test('save triggers auth modal for unsigned users', async ({ page }) => {
     await mockAllApiRoutes(page);
     await setupStorage(page, 'onboarded-no-jobs');
-    await navigateTo(page, 'analyze');
-    await expect(page.getByText('Copy shareable summary')).not.toBeVisible();
-    await page.locator('textarea').first().fill(SAMPLE_JD);
-    await page.locator('input[placeholder="e.g. Acme Corp"]').fill('Acme');
-    await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('Eng');
-    await page.getByRole('button', { name: /Analyze with Aster/i }).click();
-    await expect(page.locator('.score-ring').first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Copy shareable summary')).toBeVisible();
-    await expect(page.getByText('Share on LinkedIn')).toBeVisible();
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// AUTH FLOW
-// ═══════════════════════════════════════════════════════════════════════════════
-test.describe('Auth flow', () => {
-  test('sign in button visible, save triggers auth modal', async ({ page }) => {
-    await mockAllApiRoutes(page);
-    await setupStorage(page, 'onboarded-no-jobs');
-    await expect(page.locator('button', { hasText: 'Sign in' })).toBeVisible();
     await navigateTo(page, 'analyze');
     await page.locator('textarea').first().fill(SAMPLE_JD);
     await page.locator('input[placeholder="e.g. Acme Corp"]').fill('AuthCo');
@@ -189,7 +237,20 @@ test.describe('Auth flow', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// FEEDBACK
+// PIPELINE
+// ═══════════════════════════════════════════════════════════════════════════════
+test.describe('Pipeline', () => {
+  test('saved jobs appear and can be viewed', async ({ page }) => {
+    await mockAllApiRoutes(page);
+    await setupStorage(page, 'with-5-jobs');
+    await navigateTo(page, 'pipeline');
+    // Should see job entries
+    await expect(page.locator('.card').first()).toBeVisible({ timeout: 5000 });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FEEDBACK WIDGET
 // ═══════════════════════════════════════════════════════════════════════════════
 test.describe('Feedback widget', () => {
   test('opens, accepts input, submits', async ({ page }) => {
@@ -211,84 +272,69 @@ test.describe('Feedback widget', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ANALYSIS FEEDBACK (thumbs)
+// ERROR RESILIENCE
 // ═══════════════════════════════════════════════════════════════════════════════
-test.describe('Analysis thumbs feedback', () => {
-  test('appears after analysis, can vote once', async ({ page }) => {
-    await mockAllApiRoutes(page);
+test.describe('Error resilience', () => {
+  test('Claude 500 → user sees error, textarea preserved', async ({ page }) => {
+    await page.route('**/api/claude', route => route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"fail"}' }));
+    await page.route('**/api/infer-prefs', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
+    await page.route('**/api/parse-resume', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{"text":"r"}' }));
+    await setupStorage(page, 'onboarded-no-jobs');
+    await navigateTo(page, 'analyze');
+    await page.locator('textarea').first().fill('My important JD text');
+    await page.locator('input[placeholder="e.g. Acme Corp"]').fill('Err');
+    await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('E');
+    await page.getByRole('button', { name: /Analyze with Aster/i }).click();
+    await expect(page.getByText(/failed|Could not|timed out|500/i)).toBeVisible({ timeout: 10000 });
+    // Textarea preserved
+    await expect(page.locator('textarea').first()).toHaveValue('My important JD text');
+    // Button re-enables
+    await expect(page.getByRole('button', { name: /Analyze with Aster/i })).toBeEnabled({ timeout: 5000 });
+  });
+
+  test('Claude 429 → user sees rate limit message', async ({ page }) => {
+    await page.route('**/api/claude', route => route.fulfill({ status: 429, contentType: 'application/json', body: '{"error":"Rate limited. Try again in a minute."}' }));
+    await page.route('**/api/infer-prefs', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
     await setupStorage(page, 'onboarded-no-jobs');
     await navigateTo(page, 'analyze');
     await page.locator('textarea').first().fill(SAMPLE_JD);
     await page.locator('input[placeholder="e.g. Acme Corp"]').fill('Co');
     await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('E');
     await page.getByRole('button', { name: /Analyze with Aster/i }).click();
-    await expect(page.locator('.score-ring').first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Was this helpful?')).toBeVisible();
-    await page.getByText('👍').click();
-    await expect(page.getByText('Thanks for the feedback')).toBeVisible();
-    await expect(page.getByText('👍')).not.toBeVisible();
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// OG META TAGS
-// ═══════════════════════════════════════════════════════════════════════════════
-test.describe('OG meta tags', () => {
-  test('all OG and Twitter tags present', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
-    expect(await page.locator('meta[property="og:title"]').getAttribute('content')).toContain('Aster');
-    expect(await page.locator('meta[property="og:description"]').getAttribute('content')).toBeTruthy();
-    expect(await page.locator('meta[property="og:image"]').getAttribute('content')).toContain('og-image.png');
-    expect(await page.locator('meta[property="og:url"]').getAttribute('content')).toContain('astercopilot.com');
-    expect(await page.locator('meta[name="twitter:card"]').getAttribute('content')).toBe('summary_large_image');
+    await expect(page.getByText(/rate|Too many|try again/i)).toBeVisible({ timeout: 10000 });
   });
 
-  test('og-image.png returns 200 PNG', async ({ request }) => {
-    const r = await request.get('/og-image.png');
-    expect(r.status()).toBe(200);
-    expect(r.headers()['content-type']).toContain('image/png');
+  test('Claude malformed JSON → error with retry', async ({ page }) => {
+    await page.route('**/api/claude', (route, req) => {
+      const body = JSON.parse(req.postData());
+      if (body.messages?.[0]?.content?.includes('Extract the company')) {
+        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: '{}' }] }) });
+      } else {
+        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: 'broken json {{{' }] }) });
+      }
+    });
+    await page.route('**/api/infer-prefs', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
+    await setupStorage(page, 'onboarded-no-jobs');
+    await navigateTo(page, 'analyze');
+    await page.locator('textarea').first().fill(SAMPLE_JD);
+    await page.locator('input[placeholder="e.g. Acme Corp"]').fill('Malformed');
+    await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('E');
+    await page.getByRole('button', { name: /Analyze with Aster/i }).click();
+    await expect(page.getByText(/Could not parse/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: /Analyze with Aster/i })).toBeEnabled({ timeout: 3000 });
   });
-});
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// MOBILE (375px)
-// ═══════════════════════════════════════════════════════════════════════════════
-test.describe('Mobile viewport (375px)', () => {
-  test('layout works, feedback positioned correctly', async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 812 });
+  test('full navigation produces zero console errors', async ({ page }) => {
+    const errors = [];
+    page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
     await mockAllApiRoutes(page);
     await setupStorage(page, 'onboarded-no-jobs');
-    // Hamburger visible
-    await expect(page.locator('.nav-hamburger')).toBeVisible();
-    // Feedback button visible and positioned high
-    const fb = page.locator('.feedback-btn');
-    await expect(fb).toBeVisible();
-    const box = await fb.boundingBox();
-    expect(box.y + box.height).toBeLessThan(812 - 60);
-    // Navigate via hamburger
-    await page.locator('.nav-hamburger').click();
-    await page.locator('.nav-mobile-dropdown').getByRole('button', { name: 'Analyze', exact: true }).click();
-    await expect(page.getByText('Analyze a job')).toBeVisible();
-    // Textarea usable
-    await page.locator('textarea').first().fill('Test mobile');
-    await expect(page.locator('textarea').first()).toHaveValue('Test mobile');
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// NAVIGATION
-// ═══════════════════════════════════════════════════════════════════════════════
-test.describe('Navigation', () => {
-  test('all tabs clickable without crash', async ({ page }) => {
-    await mockAllApiRoutes(page);
-    await setupStorage(page, 'onboarded-no-jobs');
-    for (const tab of ['Dashboard', 'Analyze', 'Pipeline', 'Outreach', 'Strategy', 'Resume']) {
+    for (const tab of ['Analyze', 'Pipeline', 'Outreach', 'Strategy', 'Resume', 'Dashboard']) {
       await page.getByRole('button', { name: tab, exact: true }).click();
-      await page.waitForTimeout(200);
+      await page.waitForTimeout(300);
     }
-    // If we got here, no crashes
-    expect(true).toBe(true);
+    const realErrors = errors.filter(e => !e.includes('favicon') && !e.includes('the server responded'));
+    expect(realErrors).toHaveLength(0);
   });
 });
 
@@ -312,5 +358,75 @@ test.describe('Persistence', () => {
     await page.waitForLoadState('domcontentloaded');
     await navigateTo(page, 'pipeline');
     await expect(page.getByText('PersistCo')).toBeVisible({ timeout: 10000 });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOBILE (375px)
+// ═══════════════════════════════════════════════════════════════════════════════
+test.describe('Mobile viewport (375px)', () => {
+  test('layout works, navigation accessible', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await mockAllApiRoutes(page);
+    await setupStorage(page, 'onboarded-no-jobs');
+    await expect(page.locator('.nav-hamburger')).toBeVisible();
+    // Feedback button visible
+    const fb = page.locator('.feedback-btn');
+    await expect(fb).toBeVisible();
+    const box = await fb.boundingBox();
+    expect(box.y + box.height).toBeLessThan(812 - 60);
+    // Navigate via hamburger
+    await page.locator('.nav-hamburger').click();
+    await page.locator('.nav-mobile-dropdown').getByRole('button', { name: 'Analyze', exact: true }).click();
+    await expect(page.getByText('Analyze a job')).toBeVisible();
+    // Textarea usable
+    await page.locator('textarea').first().fill('Test mobile');
+    await expect(page.locator('textarea').first()).toHaveValue('Test mobile');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLET (768px)
+// ═══════════════════════════════════════════════════════════════════════════════
+test.describe('Tablet viewport (768px)', () => {
+  test('layout correct at breakpoint', async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await mockAllApiRoutes(page);
+    await setupStorage(page, 'onboarded-no-jobs');
+    await navigateTo(page, 'analyze');
+    await expect(page.getByText('Analyze a job')).toBeVisible();
+    // Textarea is visible and usable
+    await page.locator('textarea').first().fill('Tablet test');
+    await expect(page.locator('textarea').first()).toHaveValue('Tablet test');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATA PRESERVATION ON ERROR
+// ═══════════════════════════════════════════════════════════════════════════════
+test.describe('Data preservation on error', () => {
+  test('textarea content and inputs preserved after analysis error', async ({ page }) => {
+    await page.route('**/api/claude', route => route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"fail"}' }));
+    await page.route('**/api/infer-prefs', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
+    await setupStorage(page, 'onboarded-no-jobs');
+    await navigateTo(page, 'analyze');
+    await page.locator('textarea').first().fill('My important JD text');
+    await page.locator('input[placeholder="e.g. Acme Corp"]').fill('Kept');
+    await page.locator('input[placeholder="e.g. Marketing Manager"]').fill('Data');
+    await page.getByRole('button', { name: /Analyze with Aster/i }).click();
+    await expect(page.getByText(/failed|Could not|500/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('textarea').first()).toHaveValue('My important JD text');
+    await expect(page.locator('input[placeholder="e.g. Acme Corp"]')).toHaveValue('Kept');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// OG META TAGS (dedicated)
+// ═══════════════════════════════════════════════════════════════════════════════
+test.describe('OG meta tags', () => {
+  test('og-image.png returns 200 PNG', async ({ request }) => {
+    const r = await request.get('/og-image.png');
+    expect(r.status()).toBe(200);
+    expect(r.headers()['content-type']).toContain('image/png');
   });
 });

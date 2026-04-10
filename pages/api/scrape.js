@@ -1,3 +1,62 @@
+// ─── Rate Limiting ──────────────────────────────────────────────────────────
+const rateMap = new Map();
+const RATE_WINDOW_MS = 60_000;
+const RATE_LIMIT = 10;
+
+function getClientIp(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+}
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const entry = rateMap.get(ip);
+  if (!entry || now - entry.windowStart > RATE_WINDOW_MS) {
+    rateMap.set(ip, { windowStart: now, count: 1 });
+    return false;
+  }
+  entry.count++;
+  if (entry.count > RATE_LIMIT) return true;
+  return false;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateMap) {
+    if (now - entry.windowStart > RATE_WINDOW_MS * 2) rateMap.delete(ip);
+  }
+}, 300_000);
+
+// ─── SSRF Protection ────────────────────────────────────────────────────────
+function isPrivateUrl(urlStr) {
+  try {
+    const parsed = new URL(urlStr);
+    const hostname = parsed.hostname.toLowerCase().replace(/[\[\]]/g, '');
+    // Block obvious names
+    if (hostname === 'localhost' || hostname === '::1' || hostname === '::ffff:127.0.0.1') return true;
+    // Resolve numeric IPs (handles octal 0177.0.0.1, hex 0x7f.0.0.1, etc.)
+    const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4Match) {
+      const octets = ipv4Match.slice(1).map(Number);
+      if (octets[0] === 127) return true;                     // 127.x.x.x
+      if (octets[0] === 10) return true;                      // 10.x.x.x
+      if (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) return true; // 172.16-31.x.x
+      if (octets[0] === 192 && octets[1] === 168) return true; // 192.168.x.x
+      if (octets[0] === 169 && octets[1] === 254) return true; // 169.254.x.x (link-local + metadata)
+      if (octets[0] === 0) return true;                        // 0.x.x.x
+    }
+    // Block any hostname that is just digits/dots/colons (unusual patterns, potential bypass)
+    if (/^[\d.]+$/.test(hostname) && !ipv4Match) return true;  // Malformed numeric like 0177.0.0.1
+    // Block IPv6 patterns
+    if (hostname.includes(':')) return true;
+    // Block cloud metadata
+    if (hostname === '169.254.169.254' || hostname === 'metadata.google.internal') return true;
+    return false;
+  } catch {
+    return true; // Unparseable = reject
+  }
+}
+
+// ─── Scraper Logic ──────────────────────────────────────────────────────────
 const BLOCKED_DOMAINS = [
   'icims.com', 'myworkdayjobs.com', 'taleo.net', 'successfactors.com',
   'brassring.com', 'ultipro.com', 'paylocity.com', 'paycomonline.net',
@@ -14,7 +73,6 @@ const JUNK_PATTERNS = [
   'window.__remixContext', '"buildId":', '"props":',
 ];
 
-// Content that signals we've gone past the actual JD
 const STOP_MARKERS = [
   'Apply for this job', 'Create a Job Alert', 'Voluntary Self-Identification',
   'Apply Now', 'Submit Application', 'Equal Employment Opportunity',
@@ -31,7 +89,6 @@ function isJunkText(text) {
 }
 
 function isJobListingIndex(text) {
-  // Detect index pages: many repeated short entries with locations
   const locationPattern = /(?:San Francisco|New York|Remote|Austin|Seattle|Chicago|Los Angeles|Boston|Denver|Portland),?\s*(?:CA|NY|TX|WA|IL|MA|CO|OR)?/gi;
   const matches = text.match(locationPattern) || [];
   return matches.length > 5;
@@ -67,22 +124,14 @@ function truncateAtStopMarkers(text) {
 
 function parseGreenhouse(html) {
   const cleaned = stripJunk(html);
-
-  // Extract title from first h1
   const titleMatch = cleaned.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  const title = titleMatch ? stripTags(titleMatch[1]) : '';
-
-  // Find content between first h1 and first form or apply section
   let content = cleaned;
   if (titleMatch) {
     const startIdx = cleaned.indexOf(titleMatch[0]);
     content = cleaned.slice(startIdx);
   }
-
-  // Cut at first form tag or apply markers
   const formIdx = content.indexOf('<form');
   if (formIdx > 100) content = content.slice(0, formIdx);
-
   const text = stripTags(content);
   return truncateAtStopMarkers(text);
 }
@@ -97,7 +146,6 @@ function parseAshby(html) {
 
 function parseGeneric(html) {
   const cleaned = stripJunk(html);
-  // Prefer <main> if it exists
   const mainMatch = cleaned.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
   const bodyMatch = cleaned.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
   const content = mainMatch ? mainMatch[1] : (bodyMatch ? bodyMatch[1] : cleaned);
@@ -106,7 +154,13 @@ function parseGeneric(html) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed', message: 'POST only' });
+
+  // Rate limiting
+  const ip = getClientIp(req);
+  if (isRateLimited(ip)) {
+    return res.status(429).json({ success: false, error: 'rate_limited', message: 'Too many requests. Try again in a minute.' });
+  }
 
   const { url } = req.body || {};
   if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
@@ -116,6 +170,11 @@ export default async function handler(req, res) {
   let hostname;
   try { hostname = new URL(url).hostname; } catch {
     return res.status(400).json({ success: false, error: 'invalid_url', message: 'Enter a valid URL' });
+  }
+
+  // SSRF protection
+  if (isPrivateUrl(url)) {
+    return res.status(400).json({ success: false, error: 'invalid_url', message: 'Cannot access internal URLs.' });
   }
 
   // Check blocked domains
@@ -149,7 +208,6 @@ export default async function handler(req, res) {
 
     const html = await response.text();
 
-    // Determine final hostname after redirects
     const finalUrl = response.url || url;
     const finalHostname = new URL(finalUrl).hostname;
 

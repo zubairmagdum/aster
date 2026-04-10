@@ -23,26 +23,41 @@ export default function AuthModal({ onClose }) {
 
   const handleGoogle = async () => {
     setError('');
-    const { error: err } = await signInWithGoogle();
-    if (err) setError(err.message || 'Google sign-in failed. Try magic link instead.');
+    try {
+      const { error: err } = await signInWithGoogle();
+      if (err) {
+        const msg = (err.message || '').toLowerCase();
+        if (msg.includes('popup') || msg.includes('blocked') || msg.includes('closed')) {
+          setError('Popup was blocked. Allow popups for astercopilot.com or try the magic link instead.');
+        } else {
+          setError(err.message || 'Google sign-in failed. Try magic link instead.');
+        }
+      }
+    } catch {
+      setError('Google sign-in failed. Try the magic link instead.');
+    }
   };
 
   const handleMagicLink = async () => {
     if (!email.includes('@')) { setError('Enter a valid email'); return; }
     setLoading(true);
     setError('');
-    const { error: err } = await signInWithMagicLink(email);
-    if (err) {
-      const msg = (err.message || '').toLowerCase();
-      if (msg.includes('rate') || msg.includes('limit') || msg.includes('too many')) {
-        setError('Too many attempts. Please wait 60 seconds.');
-      } else {
-        setError(err.message || 'Something went wrong');
+    try {
+      const { error: err } = await signInWithMagicLink(email);
+      if (err) {
+        const msg = (err.message || '').toLowerCase();
+        if (msg.includes('rate') || msg.includes('limit') || msg.includes('too many')) {
+          setError('Too many attempts. Please wait 60 seconds.');
+        } else {
+          setError("Couldn't send the sign-in link. Check your email address and try again.");
+        }
+        setLoading(false);
+        return;
       }
-      setLoading(false);
-      return;
+      setSent(true);
+    } catch {
+      setError("Couldn't send the sign-in link. Check your email address and try again.");
     }
-    setSent(true);
     setLoading(false);
   };
 

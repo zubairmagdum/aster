@@ -1,5 +1,8 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
+// Ensure API key is available
+process.env.ANTHROPIC_API_KEY = 'test-api-key';
+
 // Mock global fetch before importing handlers
 const mockFetchResponse = { ok: true, json: async () => ({}) };
 vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(mockFetchResponse)));
@@ -11,8 +14,9 @@ const { default: inferPrefsHandler } = await import('../../pages/api/infer-prefs
 
 const mockReq = (overrides = {}) => ({
   method: 'POST',
-  body: { messages: [{ role: 'user', content: 'test' }] },
+  body: { messages: [{ role: 'user', content: 'test' }], max_tokens: 100 },
   headers: { origin: 'http://localhost:3000' },
+  socket: { remoteAddress: '200.200.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) },
   ...overrides,
 });
 
@@ -36,7 +40,6 @@ describe('/api/claude', () => {
     const res = mockRes();
     await claudeHandler(mockReq({ method: 'GET' }), res);
     expect(res.status).toHaveBeenCalledWith(405);
-    expect(res.end).toHaveBeenCalled();
   });
 
   it('missing body.messages → 400', async () => {
@@ -75,12 +78,10 @@ describe('/api/claude', () => {
     expect(res.json).toHaveBeenCalled();
   });
 
-  it('no origin header → allowed through (server-side calls)', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ data: 'ok' }) });
+  it('no origin header → rejected (security fix)', async () => {
     const res = mockRes();
     await claudeHandler(mockReq({ headers: {} }), res);
-    expect(res.status).not.toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({ data: 'ok' });
+    expect(res.status).toHaveBeenCalledWith(403);
   });
 
   it('valid request → calls Anthropic and returns response', async () => {
@@ -97,7 +98,7 @@ describe('/api/claude', () => {
     const res = mockRes();
     await claudeHandler(mockReq(), res);
     expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Network error' }));
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: expect.any(String) }));
   });
 });
 
@@ -115,14 +116,10 @@ describe('/api/parse-resume', () => {
     expect(res.status).toHaveBeenCalledWith(405);
   });
 
-  it('missing base64 in body → handles without crash', async () => {
-    // base64 is undefined → Claude gets called with undefined in the prompt
-    // This should not crash the handler, just produce an error from Claude
-    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ content: [{ type: 'text', text: '' }] }) });
+  it('missing base64 in body → 400', async () => {
     const res = mockRes();
     await parseResumeHandler(mockReq({ body: {} }), res);
-    // No text extracted → 500
-    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.status).toHaveBeenCalledWith(400);
   });
 
   it('valid PDF request → returns parsed text', async () => {
@@ -175,16 +172,16 @@ describe('/api/infer-prefs', () => {
     expect(res.status).toHaveBeenCalledWith(405);
   });
 
-  it('missing resumeText → handles gracefully (sends undefined to Claude)', async () => {
-    // resumeText is undefined in the prompt — Claude may return garbage → JSON.parse fails → 500
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ content: [{ type: 'text', text: 'not json' }] }),
-    });
+  it('missing resumeText → 400', async () => {
     const res = mockRes();
     await inferPrefsHandler(mockReq({ body: {} }), res);
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Could not parse preferences' }));
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('short resumeText → 400', async () => {
+    const res = mockRes();
+    await inferPrefsHandler(mockReq({ body: { resumeText: 'too short' } }), res);
+    expect(res.status).toHaveBeenCalledWith(400);
   });
 
   it('valid resumeText → returns prefs with cannotMeetRequirements', async () => {
@@ -204,9 +201,8 @@ describe('/api/infer-prefs', () => {
       json: async () => ({ content: [{ type: 'text', text: JSON.stringify(inferredPrefs) }] }),
     });
     const res = mockRes();
-    await inferPrefsHandler(mockReq({ body: { resumeText: 'Jane Doe — Senior Engineer' } }), res);
+    await inferPrefsHandler(mockReq({ body: { resumeText: 'Jane Doe — Senior Engineer with 10 years of experience building scalable systems.' } }), res);
     expect(res.json).toHaveBeenCalledWith(inferredPrefs);
-    expect(res.json.mock.calls[0][0].cannotMeetRequirements).toEqual(['Security clearance required']);
   });
 
   it('Claude returns markdown-wrapped JSON → parses correctly', async () => {
@@ -216,7 +212,7 @@ describe('/api/infer-prefs', () => {
       json: async () => ({ content: [{ type: 'text', text: '```json\n' + JSON.stringify(inferredPrefs) + '\n```' }] }),
     });
     const res = mockRes();
-    await inferPrefsHandler(mockReq({ body: { resumeText: 'John Smith — Analyst' } }), res);
+    await inferPrefsHandler(mockReq({ body: { resumeText: 'John Smith — Financial Analyst with 5 years experience at Goldman Sachs' } }), res);
     expect(res.json).toHaveBeenCalledWith(inferredPrefs);
   });
 });

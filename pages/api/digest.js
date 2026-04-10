@@ -1,7 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).end();
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Auth: require shared secret
+  const apiKey = process.env.DIGEST_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'Digest API key not configured' });
+
+  const authHeader = req.headers.authorization || '';
+  const providedKey = authHeader.replace(/^Bearer\s+/i, '');
+  if (!providedKey || providedKey !== apiKey) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -22,7 +32,7 @@ export default async function handler(req, res) {
 
     if (error) return res.status(500).json({ error: error.message });
 
-    // Group by user
+    // Aggregate stats only — never expose user_id
     const byUser = {};
     (jobs || []).forEach(job => {
       if (!job.user_id) return;
@@ -34,14 +44,22 @@ export default async function handler(req, res) {
       if (typeof job.fit_score === 'number') u.scores.push(job.fit_score);
     });
 
-    const digest = Object.entries(byUser).map(([userId, data]) => ({
-      userId,
-      totalJobs: data.total,
-      verdicts: data.verdicts,
-      avgFitScore: data.scores.length > 0 ? Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length) : null,
-    }));
+    // Return only aggregate, no per-user breakdown
+    const userCount = Object.keys(byUser).length;
+    const totalJobs = Object.values(byUser).reduce((sum, u) => sum + u.total, 0);
+    const allScores = Object.values(byUser).flatMap(u => u.scores);
+    const avgFitScore = allScores.length > 0 ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : null;
+    const verdictTotals = {};
+    Object.values(byUser).forEach(u => {
+      Object.entries(u.verdicts).forEach(([v, c]) => { verdictTotals[v] = (verdictTotals[v] || 0) + c; });
+    });
 
-    res.json({ users: digest.length, digest });
+    res.json({
+      users: userCount,
+      totalJobs,
+      avgFitScore,
+      verdictBreakdown: verdictTotals,
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

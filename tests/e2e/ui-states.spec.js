@@ -378,8 +378,11 @@ test.describe('6. Persistence', () => {
     await page.getByRole('button', { name: /Save to pipeline/i }).click();
     await dismissAuthIfNeeded(page);
     await expect(page.getByText(/saved locally|saved as/i).first()).toBeVisible({ timeout: 5000 });
+    // Wait for React state effect to flush localStorage write
+    await page.waitForTimeout(500);
     await page.reload();
     await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(500); // Wait for React hydration
     // After reload, navigate to pipeline — job should be in localStorage
     await navigateTo(page, 'pipeline');
     await expect(page.getByText('PersistCo').first()).toBeVisible({ timeout: 10000 });
@@ -553,6 +556,7 @@ test.describe('8. Content rendering', () => {
     await setupStorage(page, 'with-5-jobs');
     await navigateTo(page, 'pipeline');
     await expect(page.getByText('Your Pipeline')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Stripe').first()).toBeVisible({ timeout: 5000 });
     // Verify status chips for different statuses
     await expect(page.locator('.status-chip', { hasText: 'Applied' }).first()).toBeVisible();
     await expect(page.locator('.status-chip', { hasText: 'Recruiter Screen' })).toBeVisible();

@@ -15,6 +15,7 @@ vi.mock('@supabase/supabase-js', () => ({
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key';
+process.env.DIGEST_API_KEY = 'test-digest-secret';
 
 const { default: digestHandler } = await import('../../pages/api/digest.js');
 
@@ -29,36 +30,56 @@ const res = () => {
 describe('Digest API', () => {
   it('rejects POST', async () => {
     const r = res();
-    await digestHandler({ method: 'POST' }, r);
+    await digestHandler({ method: 'POST', headers: {} }, r);
     expect(r.status).toHaveBeenCalledWith(405);
   });
 
   it('rejects PUT', async () => {
     const r = res();
-    await digestHandler({ method: 'PUT' }, r);
+    await digestHandler({ method: 'PUT', headers: {} }, r);
     expect(r.status).toHaveBeenCalledWith(405);
   });
 
   it('rejects DELETE', async () => {
     const r = res();
-    await digestHandler({ method: 'DELETE' }, r);
+    await digestHandler({ method: 'DELETE', headers: {} }, r);
     expect(r.status).toHaveBeenCalledWith(405);
   });
 
-  it('GET returns correct shape', async () => {
+  it('rejects GET without auth', async () => {
     const r = res();
-    await digestHandler({ method: 'GET' }, r);
-    const data = r.json.mock.calls[0][0];
-    expect(data).toHaveProperty('users');
-    expect(data).toHaveProperty('digest');
-    expect(Array.isArray(data.digest)).toBe(true);
+    await digestHandler({ method: 'GET', headers: {} }, r);
+    expect(r.status).toHaveBeenCalledWith(401);
   });
 
-  it('returns empty digest when no jobs', async () => {
+  it('rejects GET with wrong key', async () => {
     const r = res();
-    await digestHandler({ method: 'GET' }, r);
+    await digestHandler({ method: 'GET', headers: { authorization: 'Bearer wrong' } }, r);
+    expect(r.status).toHaveBeenCalledWith(401);
+  });
+
+  it('GET returns correct shape with valid auth', async () => {
+    const r = res();
+    await digestHandler({ method: 'GET', headers: { authorization: 'Bearer test-digest-secret' } }, r);
+    const data = r.json.mock.calls[0][0];
+    expect(data).toHaveProperty('users');
+    expect(data).toHaveProperty('totalJobs');
+    expect(data).toHaveProperty('avgFitScore');
+    expect(data).toHaveProperty('verdictBreakdown');
+  });
+
+  it('returns zero counts when no jobs', async () => {
+    const r = res();
+    await digestHandler({ method: 'GET', headers: { authorization: 'Bearer test-digest-secret' } }, r);
     const data = r.json.mock.calls[0][0];
     expect(data.users).toBe(0);
-    expect(data.digest).toEqual([]);
+    expect(data.totalJobs).toBe(0);
+  });
+
+  it('does not expose userId in response', async () => {
+    const r = res();
+    await digestHandler({ method: 'GET', headers: { authorization: 'Bearer test-digest-secret' } }, r);
+    const data = r.json.mock.calls[0][0];
+    expect(JSON.stringify(data)).not.toContain('userId');
   });
 });
