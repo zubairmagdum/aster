@@ -20,10 +20,9 @@ test.describe('Production Smoke', () => {
 
   test('navigation tabs are present', async ({ page }) => {
     await page.goto(PROD_URL);
-    // Either we see the onboarding or the app nav
-    const hasNav = await page.getByRole('button', { name: 'Dashboard' }).isVisible().catch(() => false);
-    const hasOnboarding = await page.getByText('Land the job').isVisible().catch(() => false);
-    expect(hasNav || hasOnboarding).toBe(true);
+    // App may briefly show blank while checking auth — wait for either nav or onboarding
+    const navOrOnboarding = page.locator('button:has-text("Dashboard"), :text("Land the job")').first();
+    await expect(navOrOnboarding).toBeVisible({ timeout: 10000 });
   });
 
   test('no broken resources', async ({ page }) => {

@@ -247,8 +247,11 @@ test.describe('4. State transitions', () => {
     await page.getByRole('button', { name: /Save to pipeline/i }).click();
     await dismissAuthIfNeeded(page);
     await expect(page.getByText(/saved locally|saved as/i).first()).toBeVisible({ timeout: 5000 });
-    // Wait for React state effect to flush localStorage write
-    await page.waitForTimeout(500);
+    // Poll until localStorage has the job (React effect may not have flushed yet)
+    await page.waitForFunction(() => {
+      try { return JSON.parse(localStorage.getItem('aster_jobs') || '[]').some(j => j.company === 'NewCo'); }
+      catch { return false; }
+    }, { timeout: 5000 });
     await navigateTo(page, 'pipeline');
     await expect(page.getByText('NewCo').first()).toBeVisible({ timeout: 10000 });
   });
@@ -380,11 +383,13 @@ test.describe('6. Persistence', () => {
     await page.getByRole('button', { name: /Save to pipeline/i }).click();
     await dismissAuthIfNeeded(page);
     await expect(page.getByText(/saved locally|saved as/i).first()).toBeVisible({ timeout: 5000 });
-    // Wait for React state effect to flush localStorage write
-    await page.waitForTimeout(500);
+    // Poll until localStorage has the job (React effect may not have flushed yet)
+    await page.waitForFunction(() => {
+      try { return JSON.parse(localStorage.getItem('aster_jobs') || '[]').some(j => j.company === 'PersistCo'); }
+      catch { return false; }
+    }, { timeout: 5000 });
     await page.reload();
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(500); // Wait for React hydration
     // After reload, navigate to pipeline — job should be in localStorage
     await navigateTo(page, 'pipeline');
     await expect(page.getByText('PersistCo').first()).toBeVisible({ timeout: 10000 });

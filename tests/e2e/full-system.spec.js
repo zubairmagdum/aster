@@ -38,13 +38,6 @@ test.describe('First visit (clean state)', () => {
     await expect(page.getByText('Try a sample JD')).toBeVisible();
   });
 
-  test('no resume dot when no resume', async ({ page }) => {
-    await setupStorage(page, 'onboarded-no-resume');
-    const btn = page.getByRole('button', { name: 'Resume', exact: true });
-    const dots = btn.locator('span[style*="border-radius: 50%"]');
-    await expect(dots).toHaveCount(0);
-  });
-
   test('all nav tabs clickable without crash', async ({ page }) => {
     for (const tab of ['Dashboard', 'Analyze', 'Pipeline', 'Outreach', 'Strategy', 'Resume']) {
       await page.getByRole('button', { name: tab, exact: true }).click();
@@ -63,6 +56,19 @@ test.describe('First visit (clean state)', () => {
     expect(await page.locator('meta[property="og:title"]').getAttribute('content')).toContain('Aster');
     expect(await page.locator('meta[property="og:image"]').getAttribute('content')).toContain('og-image.png');
     expect(await page.locator('meta[name="twitter:card"]').getAttribute('content')).toBe('summary_large_image');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RESUME DOT (isolated — no beforeEach that loads a resume)
+// ═══════════════════════════════════════════════════════════════════════════════
+test.describe('Resume indicator', () => {
+  test('no resume dot when no resume', async ({ page }) => {
+    await mockAllApiRoutes(page);
+    await setupStorage(page, 'onboarded-no-resume');
+    const btn = page.getByRole('button', { name: 'Resume', exact: true });
+    const dots = btn.locator('span[style*="border-radius: 50%"]');
+    await expect(dots).toHaveCount(0);
   });
 });
 
