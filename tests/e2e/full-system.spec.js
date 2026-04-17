@@ -360,6 +360,11 @@ test.describe('Persistence', () => {
     await page.getByRole('button', { name: /Save to pipeline/i }).click();
     await dismissAuth(page);
     await expect(page.getByText(/saved/i).first()).toBeVisible({ timeout: 5000 });
+    // Poll until React effect flushes the job to localStorage
+    await page.waitForFunction(() => {
+      try { return JSON.parse(localStorage.getItem('aster_jobs') || '[]').some(j => j.company === 'PersistCo'); }
+      catch { return false; }
+    }, { timeout: 5000 });
     await page.reload();
     await page.waitForLoadState('domcontentloaded');
     await navigateTo(page, 'pipeline');

@@ -261,6 +261,8 @@ test.describe('4. State transitions', () => {
     await setupStorage(page, 'with-5-jobs');
     await navigateTo(page, 'pipeline');
     await expect(page.getByText('Your Pipeline')).toBeVisible({ timeout: 10000 });
+    // Wait for job cards to render before interacting
+    await expect(page.getByText('Stripe').first()).toBeVisible({ timeout: 10000 });
     // Expand Stripe
     await page.getByText('Stripe').first().click();
     // Change status
