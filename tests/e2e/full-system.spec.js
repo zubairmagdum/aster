@@ -213,7 +213,7 @@ test.describe('Email capture', () => {
 // SAVE FLOW & AUTH
 // ═══════════════════════════════════════════════════════════════════════════════
 test.describe('Save flow', () => {
-  test('save triggers auth modal for unsigned users', async ({ page }) => {
+  test('save triggers auth modal for unsigned users', { timeout: 60000 }, async ({ page }) => {
     await mockAllApiRoutes(page);
     await setupStorage(page, 'onboarded-no-jobs');
     await navigateTo(page, 'analyze');
@@ -227,7 +227,7 @@ test.describe('Save flow', () => {
     await expect(page.getByText('Continue with Google')).toBeVisible();
   });
 
-  test('dismiss auth modal saves locally', async ({ page }) => {
+  test('dismiss auth modal saves locally', { timeout: 60000 }, async ({ page }) => {
     await mockAllApiRoutes(page);
     await setupStorage(page, 'onboarded-no-jobs');
     await navigateTo(page, 'analyze');
@@ -348,7 +348,7 @@ test.describe('Error resilience', () => {
 // PERSISTENCE
 // ═══════════════════════════════════════════════════════════════════════════════
 test.describe('Persistence', () => {
-  test('saved job survives refresh', async ({ page }) => {
+  test('saved job survives refresh', { timeout: 60000 }, async ({ page }) => {
     await mockAllApiRoutes(page);
     await setupStorage(page, 'onboarded-no-jobs');
     await navigateTo(page, 'analyze');

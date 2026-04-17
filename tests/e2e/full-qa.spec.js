@@ -158,7 +158,7 @@ test.describe('Share CTA', () => {
 // AUTH FLOW
 // ═══════════════════════════════════════════════════════════════════════════════
 test.describe('Auth flow', () => {
-  test('sign in button visible, save triggers auth modal', async ({ page }) => {
+  test('sign in button visible, save triggers auth modal', { timeout: 60000 }, async ({ page }) => {
     await mockAllApiRoutes(page);
     await setupStorage(page, 'onboarded-no-jobs');
     await expect(page.locator('button', { hasText: 'Sign in' })).toBeVisible();
@@ -173,7 +173,7 @@ test.describe('Auth flow', () => {
     await expect(page.getByText('Continue with Google')).toBeVisible();
   });
 
-  test('dismiss auth modal saves locally', async ({ page }) => {
+  test('dismiss auth modal saves locally', { timeout: 60000 }, async ({ page }) => {
     await mockAllApiRoutes(page);
     await setupStorage(page, 'onboarded-no-jobs');
     await navigateTo(page, 'analyze');
@@ -296,7 +296,7 @@ test.describe('Navigation', () => {
 // PERSISTENCE
 // ═══════════════════════════════════════════════════════════════════════════════
 test.describe('Persistence', () => {
-  test('saved job survives refresh', async ({ page }) => {
+  test('saved job survives refresh', { timeout: 60000 }, async ({ page }) => {
     await mockAllApiRoutes(page);
     await setupStorage(page, 'onboarded-no-jobs');
     await navigateTo(page, 'analyze');

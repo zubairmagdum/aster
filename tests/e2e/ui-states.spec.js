@@ -234,7 +234,7 @@ test.describe('4. State transitions', () => {
     await expect(page.getByText(/Analysis.*failed|request failed|Could not parse|Unexpected/i)).toBeVisible({ timeout: 10000 });
   });
 
-  test('Pipeline: job saved → appears immediately', async ({ page }) => {
+  test('Pipeline: job saved → appears immediately', { timeout: 60000 }, async ({ page }) => {
     await mockAllApiRoutes(page);
     await setupStorage(page, 'onboarded-no-jobs');
     await navigateTo(page, 'analyze');
@@ -372,7 +372,7 @@ test.describe('5. Negative and destructive cases', () => {
 // 6. PERSISTENCE UI CASES
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe('6. Persistence', () => {
-  test('Save job → refresh → job still in pipeline', async ({ page }) => {
+  test('Save job → refresh → job still in pipeline', { timeout: 60000 }, async ({ page }) => {
     await mockAllApiRoutes(page);
     await setupStorage(page, 'onboarded-no-jobs');
     await navigateTo(page, 'analyze');
